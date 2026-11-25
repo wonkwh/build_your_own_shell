@@ -14,13 +14,16 @@
 		42F4B1B859A0C8BB00786F8B /* RunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DDB26765302073E5984611E /* RunView.swift */; };
 		45758C1353F6E91455EC0D0E /* NanumSquareRoundB.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3B2AAE8534973F6470D2BC2A /* NanumSquareRoundB.ttf */; };
 		462E409029D69E26AB61C229 /* TubeTimerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8267986655A3CB4888481C9B /* TubeTimerApp.swift */; };
+		496AF20B363AF750D56F51CE /* Routine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2874E5E9F714DE92183FA961 /* Routine.swift */; };
 		5D9893E1CA36DE443E8257ED /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF348549A79DFA9188119705 /* SetupView.swift */; };
+		61F842A215C25B72D48B76EB /* VideoSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70858D75DF89D5EDCDA9F55C /* VideoSource.swift */; };
 		6679599BFF6515143A304089 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66E4C3ABF4DFE10A15AF96C1 /* Theme.swift */; };
 		7C43A7DE2CBB982649FA2BC5 /* Nunito-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AEB855FABE8DA01817274001 /* Nunito-Medium.ttf */; };
 		93A2C93BC045C743CFFF0B59 /* NanumSquareRoundR.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4B6BDD8DEFB95C8D769FF785 /* NanumSquareRoundR.ttf */; };
 		A4167CFA37811DD520427990 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0658F82DF0A7B89B5DE1D98F /* Typography.swift */; };
 		C04C705ECA3D02ECD643B021 /* IntervalRunTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0DF59CECD2D3B3F036D45EB /* IntervalRunTests.swift */; };
 		C35C7AA8D301260A7BED7F31 /* Nunito-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 791B4444C0879B7DE63FA4D8 /* Nunito-Regular.ttf */; };
+		E85D72B047C3E1430CEBBA63 /* VideoSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 008A986EC177F5C1010E3359 /* VideoSourceTests.swift */; };
 		EB1B0C6371C7B55D2AF544DF /* OFL-NanumSquareRound.txt in Resources */ = {isa = PBXBuildFile; fileRef = 1F1881C93BDA5FF56D4D7C0C /* OFL-NanumSquareRound.txt */; };
 		FFE5DAD50637CF9ED6C659C8 /* OFL-Nunito.txt in Resources */ = {isa = PBXBuildFile; fileRef = 53396CA6BDAA7516E590B447 /* OFL-Nunito.txt */; };
 /* End PBXBuildFile section */
@@ -36,15 +39,18 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		008A986EC177F5C1010E3359 /* VideoSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSourceTests.swift; sourceTree = "<group>"; };
 		0658F82DF0A7B89B5DE1D98F /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 		1C320D5456505CA744150355 /* TubeTimer.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TubeTimer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1F1881C93BDA5FF56D4D7C0C /* OFL-NanumSquareRound.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-NanumSquareRound.txt"; sourceTree = "<group>"; };
+		2874E5E9F714DE92183FA961 /* Routine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Routine.swift; sourceTree = "<group>"; };
 		3B2AAE8534973F6470D2BC2A /* NanumSquareRoundB.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = NanumSquareRoundB.ttf; sourceTree = "<group>"; };
 		3F929C1FE97614E3A74E1200 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		4B6BDD8DEFB95C8D769FF785 /* NanumSquareRoundR.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = NanumSquareRoundR.ttf; sourceTree = "<group>"; };
 		53396CA6BDAA7516E590B447 /* OFL-Nunito.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-Nunito.txt"; sourceTree = "<group>"; };
 		5DDB26765302073E5984611E /* RunView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunView.swift; sourceTree = "<group>"; };
 		66E4C3ABF4DFE10A15AF96C1 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		70858D75DF89D5EDCDA9F55C /* VideoSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSource.swift; sourceTree = "<group>"; };
 		791B4444C0879B7DE63FA4D8 /* Nunito-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Regular.ttf"; sourceTree = "<group>"; };
 		8267986655A3CB4888481C9B /* TubeTimerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TubeTimerApp.swift; sourceTree = "<group>"; };
 		A0F055E632CD9C85E4329262 /* IntervalRun.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntervalRun.swift; sourceTree = "<group>"; };
@@ -95,6 +101,7 @@
 			isa = PBXGroup;
 			children = (
 				E0DF59CECD2D3B3F036D45EB /* IntervalRunTests.swift */,
+				008A986EC177F5C1010E3359 /* VideoSourceTests.swift */,
 			);
 			path = TubeTimerTests;
 			sourceTree = "<group>";
@@ -112,9 +119,11 @@
 			isa = PBXGroup;
 			children = (
 				A0F055E632CD9C85E4329262 /* IntervalRun.swift */,
+				2874E5E9F714DE92183FA961 /* Routine.swift */,
 				5DDB26765302073E5984611E /* RunView.swift */,
 				DF348549A79DFA9188119705 /* SetupView.swift */,
 				8267986655A3CB4888481C9B /* TubeTimerApp.swift */,
+				70858D75DF89D5EDCDA9F55C /* VideoSource.swift */,
 				52FB7B019239CC447CA2DF23 /* DesignSystem */,
 				AF27E0CC43B44F38E4AE251B /* Fonts */,
 			);
@@ -221,6 +230,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C04C705ECA3D02ECD643B021 /* IntervalRunTests.swift in Sources */,
+				E85D72B047C3E1430CEBBA63 /* VideoSourceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -230,11 +240,13 @@
 			files = (
 				3DF87A0E3E3B71C961949B1E /* Components.swift in Sources */,
 				014F0EC43FEE06DEFD4A37BA /* IntervalRun.swift in Sources */,
+				496AF20B363AF750D56F51CE /* Routine.swift in Sources */,
 				42F4B1B859A0C8BB00786F8B /* RunView.swift in Sources */,
 				5D9893E1CA36DE443E8257ED /* SetupView.swift in Sources */,
 				6679599BFF6515143A304089 /* Theme.swift in Sources */,
 				462E409029D69E26AB61C229 /* TubeTimerApp.swift in Sources */,
 				A4167CFA37811DD520427990 /* Typography.swift in Sources */,
+				61F842A215C25B72D48B76EB /* VideoSource.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

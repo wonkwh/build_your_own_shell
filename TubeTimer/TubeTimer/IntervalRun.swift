@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 /// 인터벌 설정. 시간은 초 단위
-struct IntervalPlan: Equatable {
+nonisolated struct IntervalPlan: Equatable {
     var sets: Int
     var work: Int
     var rest: Int
