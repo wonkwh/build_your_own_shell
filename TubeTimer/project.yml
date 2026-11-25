@@ -1,0 +1,43 @@
+name: TubeTimer
+options:
+  bundleIdPrefix: com.wonkwh
+  deploymentTarget:
+    iOS: "18.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    DEVELOPMENT_TEAM: AEVQL949E2
+targets:
+  TubeTimer:
+    type: application
+    platform: iOS
+    sources: [TubeTimer]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wonkwh.TubeTimer
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: TubeTimer
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+  TubeTimerTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [TubeTimerTests]
+    dependencies:
+      - target: TubeTimer
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  TubeTimer:
+    build:
+      targets:
+        TubeTimer: all
+    test:
+      targets: [TubeTimerTests]
