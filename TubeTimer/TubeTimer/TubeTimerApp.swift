@@ -17,21 +17,10 @@ struct TubeTimerApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            RoutineListView()
                 .font(.nunito(.body))
                 .tint(Theme.accent)
         }
         .modelContainer(container)
-    }
-}
-
-/// ponytail: 첫 루틴만 연다. 2단계에서 루틴 목록으로 바꾼다
-private struct RootView: View {
-    @Query(sort: \Routine.createdAt) private var routines: [Routine]
-
-    var body: some View {
-        if let routine = routines.first {
-            SetupView(routine: routine)
-        }
     }
 }

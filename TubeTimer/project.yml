@@ -1,6 +1,7 @@
 name: TubeTimer
 options:
   bundleIdPrefix: com.wonkwh
+  developmentLanguage: ko
   deploymentTarget:
     iOS: "18.0"
 settings:

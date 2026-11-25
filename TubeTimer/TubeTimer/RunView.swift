@@ -2,10 +2,13 @@ import SwiftUI
 
 /// 실행 화면. Gymshark 휴식 시트처럼 큰 링 카운트다운, 건너뛰기, −10초 / +10초
 struct RunView: View {
+    let video: VideoSource?
     @State private var run: IntervalRun
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
-    init(plan: IntervalPlan) {
+    init(plan: IntervalPlan, video: VideoSource? = nil) {
+        self.video = video
         _run = State(initialValue: IntervalRun(plan: plan))
     }
 
@@ -14,7 +17,22 @@ struct RunView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 28) {
-                Spacer()
+                if let video {
+                    // ponytail: 3단계에서 앱 안 플레이어로 바꾼다. 지금은 YouTube 앱·사파리로 연다
+                    Button { openURL(video.url) } label: {
+                        VideoThumbnail(source: video)
+                            .overlay {
+                                Image(systemName: "play.circle.fill")
+                                    .font(.system(size: 48))
+                                    .foregroundStyle(.white)
+                                    .shadow(radius: 6)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("영상 열기")
+                } else {
+                    Spacer()
+                }
                 ring
                 HStack(spacing: 12) {
                     Button("−10초") { run.add(-10) }
@@ -82,7 +100,7 @@ struct RunView: View {
             }
             .padding(32)
         }
-        .frame(maxWidth: 300)
+        .frame(maxWidth: video == nil ? 300 : 220)
         .aspectRatio(1, contentMode: .fit)
         .accessibilityElement(children: .combine)
     }
@@ -97,5 +115,5 @@ struct RunView: View {
 }
 
 #Preview {
-    RunView(plan: IntervalPlan(sets: 3, work: 20, rest: 10))
+    RunView(plan: IntervalPlan(sets: 3, work: 20, rest: 10), video: VideoSource(string: "https://youtu.be/dQw4w9WgXcQ"))
 }

@@ -1,7 +1,7 @@
 import SwiftData
 import SwiftUI
 
-/// 인터벌 설정. Life Reset 의 세 항목에 Breathwrk·Opal 의 큰 − / + 스테퍼를 붙였다
+/// 루틴 편집. 이름 · 타이머(Life Reset 세 항목 + Breathwrk·Opal 큰 − / +) · 영상 링크
 struct SetupView: View {
     @Bindable var routine: Routine
     @State private var isRunning = false
@@ -10,24 +10,105 @@ struct SetupView: View {
     private var plan: IntervalPlan { routine.plan }
 
     var body: some View {
-        NavigationStack {
-            CardScroll {
-                CardSection(footer: Text("총 \(clock(plan.total))")) {
-                    StepperRow(title: "세트", value: $routine.sets, range: 1...99) { "\($0)" }
-                    StepperRow(title: "운동", value: $routine.work, range: 5...3600, step: 5, format: clock)
-                    StepperRow(title: "휴식", value: $routine.rest, range: 0...3600, step: 5, format: clock)
+        CardScroll {
+            CardSection("이름") {
+                TextField("이름", text: $routine.name)
+                    .submitLabel(.done)
+            }
+            CardSection("타이머", footer: Text("총 \(clock(plan.total))")) {
+                StepperRow(title: "세트", value: $routine.sets, range: 1...99) { "\($0)" }
+                StepperRow(title: "운동", value: $routine.work, range: 5...3600, step: 5, format: clock)
+                StepperRow(title: "휴식", value: $routine.rest, range: 0...3600, step: 5, format: clock)
+            }
+            VideoSection(routine: routine)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        // 자동 저장을 기다리다 앱이 종료되면 바꾼 값을 잃으므로 바로 저장한다
+        .onChange(of: plan) { try? context.save() }
+        .onChange(of: routine.name) { try? context.save() }
+        .onChange(of: routine.videoURL) { try? context.save() }
+        .onChange(of: routine.videoTitle) { try? context.save() }
+        .navigationTitle(routine.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .bottomAction {
+            Button("시작") { isRunning = true }
+        }
+        .fullScreenCover(isPresented: $isRunning) {
+            RunView(plan: plan, video: routine.video)
+        }
+    }
+}
+
+/// 영상 링크. 붙이기 전에는 입력칸 + 붙여넣기, 붙인 뒤에는 썸네일 · 제목 · 지우기
+private struct VideoSection: View {
+    @Bindable var routine: Routine
+    @State private var draft = ""
+    @State private var isInvalid = false
+
+    var body: some View {
+        CardSection("영상", footer: footer) {
+            if let source = routine.video {
+                VStack(alignment: .leading, spacing: 12) {
+                    VideoThumbnail(source: source)
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(routine.videoTitle ?? String(localized: "영상"))
+                                .font(.nunito(.headline))
+                                .lineLimit(2)
+                            Text(caption(source))
+                                .font(.nunito(.footnote))
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("지우기", role: .destructive) {
+                            routine.videoURL = nil
+                            routine.videoTitle = nil
+                        }
+                        .tint(Theme.caution)
+                    }
+                }
+            } else {
+                HStack {
+                    TextField("YouTube · mp4 링크", text: $draft)
+                        .keyboardType(.URL)
+                        .textContentType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.done)
+                        .onSubmit { apply(draft) }
+                    PasteButton(payloadType: String.self) { strings in
+                        Task { @MainActor in apply(strings.first ?? "") }
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonBorderShape(.capsule)
                 }
             }
-            // 자동 저장을 기다리다 앱이 종료되면 바꾼 값을 잃으므로 바로 저장한다
-            .onChange(of: plan) { try? context.save() }
-            .navigationTitle("인터벌 타이머")
-            .navigationBarTitleDisplayMode(.inline)
-            .bottomAction {
-                Button("시작") { isRunning = true }
-            }
-            .fullScreenCover(isPresented: $isRunning) {
-                RunView(plan: plan)
-            }
+        }
+    }
+
+    private var footer: Text? {
+        isInvalid ? Text("YouTube 링크나 https 로 시작하는 mp4 링크만 붙일 수 있어요").foregroundStyle(Theme.caution) : nil
+    }
+
+    private func caption(_ source: VideoSource) -> String {
+        switch source {
+        case .youtube: "YouTube"
+        case .file(let url): url.host() ?? ""
+        }
+    }
+
+    private func apply(_ text: String) {
+        guard let source = VideoSource(string: text) else {
+            isInvalid = true
+            return
+        }
+        isInvalid = false
+        draft = ""
+        routine.videoURL = source.url
+        Task {
+            guard let title = await source.fetchTitle() else { return }
+            routine.videoTitle = title
+            if routine.name == Routine.newName || routine.name.isEmpty { routine.name = title }
         }
     }
 }
@@ -76,6 +157,8 @@ private struct StepperRow: View {
 }
 
 #Preview {
-    SetupView(routine: Routine())
-        .modelContainer(for: Routine.self, inMemory: true)
+    NavigationStack {
+        SetupView(routine: Routine())
+    }
+    .modelContainer(for: Routine.self, inMemory: true)
 }

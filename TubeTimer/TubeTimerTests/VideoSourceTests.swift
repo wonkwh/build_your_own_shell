@@ -46,6 +46,11 @@ struct VideoSourceTests {
         #expect(VideoSource(string: "https://youtu.be/dQw4w9WgXcQ?t=abc") == .youtube(YouTubeVideo(id: "dQw4w9WgXcQ")))
     }
 
+    @Test func storedURL() {
+        #expect(VideoSource(string: "youtu.be/dQw4w9WgXcQ?t=1m")?.url.absoluteString == "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=60s")
+        #expect(VideoSource(string: "https://cdn.example.com/a.mp4")?.url.absoluteString == "https://cdn.example.com/a.mp4")
+    }
+
     @Test func youTubeLinks() {
         let video = YouTubeVideo(id: "dQw4w9WgXcQ", start: 90)
         #expect(video.watchURL.absoluteString == "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=90s")
@@ -75,5 +80,13 @@ struct RoutineSeedTests {
 
         let routines = try context.fetch(FetchDescriptor<Routine>())
         #expect(routines.map(\.plan) == [IntervalPlan(sets: 8, work: 40, rest: 20)])
+    }
+
+    @Test func doesNotReseedAfterUserDeletesAll() throws {
+        try Routine.seedIfNeeded(in: context, defaults: defaults)
+        try context.delete(model: Routine.self)
+        try Routine.seedIfNeeded(in: context, defaults: defaults)
+
+        #expect(try context.fetchCount(FetchDescriptor<Routine>()) == 0)
     }
 }

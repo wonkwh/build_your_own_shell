@@ -57,18 +57,21 @@ struct CardScroll<Content: View>: View {
     }
 }
 
-/// 카드 · 설명 한 묶음. 카드 안의 행 사이에는 구분선을 넣는다
+/// 제목 · 카드 · 설명 한 묶음. 카드 안의 행 사이에는 구분선을 넣는다
 struct CardSection<Content: View>: View {
+    let title: LocalizedStringKey?
     let footer: Text?
     let content: Content
 
-    init(footer: Text? = nil, @ViewBuilder content: () -> Content) {
+    init(_ title: LocalizedStringKey? = nil, footer: Text? = nil, @ViewBuilder content: () -> Content) {
+        self.title = title
         self.footer = footer
         self.content = content()
     }
 
     var body: some View {
         VStack(spacing: 12) {
+            if let title { SectionTitle(title) }
             VStack(alignment: .leading, spacing: 12) {
                 Group(subviews: content) { rows in
                     ForEach(rows) { row in
@@ -86,6 +89,29 @@ struct CardSection<Content: View>: View {
                     .padding(.horizontal, 4)
             }
         }
+    }
+}
+
+/// 카드 묶음 위의 굵은 제목
+struct SectionTitle: View {
+    let title: LocalizedStringKey
+
+    init(_ title: LocalizedStringKey) {
+        self.title = title
+    }
+
+    var body: some View {
+        Text(title)
+            .font(.nunito(.title3, .bold))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+extension View {
+    /// List 의 시스템 배경을 걷어내고 테마 배경을 깐다. 행에는 `.listRowBackground(Theme.surface)`
+    func themedList() -> some View {
+        scrollContentBackground(.hidden).listSectionSpacing(.compact).background(Theme.background)
     }
 }
 

@@ -10,6 +10,8 @@ final class Routine {
     var rest: Int
     /// 붙여넣은 영상 링크 (YouTube · mp4). YouTube 시작 시각은 링크의 `t=` 로 둔다
     var videoURL: URL?
+    /// 링크를 붙일 때 받아 둔 영상 제목
+    var videoTitle: String?
     var createdAt: Date
 
     init(name: String = "인터벌", sets: Int = 8, work: Int = 40, rest: Int = 20, videoURL: URL? = nil, createdAt: Date = .now) {
@@ -27,11 +29,17 @@ final class Routine {
 }
 
 extension Routine {
+    /// + 로 만든 루틴의 이름. 영상을 붙이면 영상 제목으로 바꾼다
+    static let newName = String(localized: "새 루틴")
     /// 예전 버전이 `@AppStorage` 에 둔 설정 키
     static let legacyKeys = ["sets", "work", "rest"]
+    private static let seededKey = "didSeedRoutine"
 
-    /// 루틴이 하나도 없으면 첫 루틴을 만든다. 예전 설정이 있으면 그 값으로 만들고 키를 지운다
+    /// 처음 실행할 때 한 번 첫 루틴을 만든다. 예전 설정이 있으면 그 값으로 만들고 키를 지운다.
+    /// 사용자가 루틴을 다 지운 뒤에는 다시 만들지 않는다
     static func seedIfNeeded(in context: ModelContext, defaults: UserDefaults = .standard) throws {
+        guard !defaults.bool(forKey: seededKey) else { return }
+        defer { defaults.set(true, forKey: seededKey) }
         guard try context.fetchCount(FetchDescriptor<Routine>()) == 0 else { return }
         let routine = Routine()
         routine.sets = defaults.object(forKey: "sets") as? Int ?? routine.sets

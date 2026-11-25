@@ -11,10 +11,12 @@ enum Theme {
     static let stroke = Color(light: 0x000000, dark: 0xFFFFFF, lightOpacity: 0.05, darkOpacity: 0.08)
     static let accent = Color(light: 0x5B67D8, dark: 0x8F9BFF)
     static let positive = Color(light: 0x2E9E5E, dark: 0x4CC983)
+    static let caution = Color(light: 0xE26A2C, dark: 0xFF9F5A)
     static let ink = Color(light: 0x1C1C1E, dark: 0xECEEFA)
     static let onInk = Color(light: 0xFFFFFF, dark: 0x141A2E)
 
     static let cardRadius: CGFloat = 22
+    static let innerRadius: CGFloat = 14
 }
 
 private extension Color {

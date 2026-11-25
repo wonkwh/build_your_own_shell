@@ -26,6 +26,28 @@ nonisolated enum VideoSource: Equatable {
             return nil
         }
     }
+
+    /// 저장할 링크. YouTube 는 시작 시각을 담은 watch 링크로 맞춘다
+    var url: URL {
+        switch self {
+        case .youtube(let video): video.watchURL
+        case .file(let url): url
+        }
+    }
+
+    /// 목록·미리보기에 보일 제목. YouTube 는 oEmbed(API 키 없음), 파일은 파일 이름
+    func fetchTitle() async -> String? {
+        switch self {
+        case .youtube(let video):
+            struct OEmbed: Decodable { let title: String }
+            var components = URLComponents(string: "https://www.youtube.com/oembed")!
+            components.queryItems = [URLQueryItem(name: "url", value: video.watchURL.absoluteString), URLQueryItem(name: "format", value: "json")]
+            guard let (data, _) = try? await URLSession.shared.data(from: components.url!) else { return nil }
+            return try? JSONDecoder().decode(OEmbed.self, from: data).title
+        case .file(let url):
+            return url.deletingPathExtension().lastPathComponent
+        }
+    }
 }
 
 /// YouTube 링크에서 꺼낸 영상 ID 와 시작 시각
