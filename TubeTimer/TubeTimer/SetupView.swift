@@ -21,6 +21,14 @@ struct SetupView: View {
                 StepperRow(title: "휴식", value: $routine.rest, range: 0...3600, step: 5, format: clock)
             }
             VideoSection(routine: routine)
+            if Health.isAvailable {
+                CardSection("건강 앱", footer: Text("끝까지 마치면 고른 운동으로 기록해요")) {
+                    Picker("운동 기록", selection: $routine.workout) {
+                        Text("기록 안 함").tag(Workout?.none)
+                        ForEach(Workout.allCases, id: \.self) { Text($0.title).tag(Optional($0)) }
+                    }
+                }
+            }
         }
         .scrollDismissesKeyboard(.interactively)
         // 자동 저장을 기다리다 앱이 종료되면 바꾼 값을 잃으므로 바로 저장한다
@@ -28,13 +36,17 @@ struct SetupView: View {
         .onChange(of: routine.name) { try? context.save() }
         .onChange(of: routine.videoURL) { try? context.save() }
         .onChange(of: routine.videoTitle) { try? context.save() }
+        .onChange(of: routine.workout) {
+            try? context.save()
+            if routine.workout != nil { Task { try? await Health.requestAccess() } }
+        }
         .navigationTitle(routine.name)
         .navigationBarTitleDisplayMode(.inline)
         .bottomAction {
             Button("시작") { isRunning = true }
         }
         .fullScreenCover(isPresented: $isRunning) {
-            RunView(plan: plan, video: routine.video)
+            RunView(plan: plan, video: routine.video, workout: routine.workout)
         }
     }
 }

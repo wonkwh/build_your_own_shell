@@ -3,12 +3,15 @@ import SwiftUI
 /// 실행 화면. Gymshark 휴식 시트처럼 큰 링 카운트다운, 건너뛰기, −10초 / +10초
 struct RunView: View {
     let video: VideoSource?
+    let workout: Workout?
     @State private var run: IntervalRun
+    @State private var startedAt = Date.now
+    @State private var isLogged = false
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.openURL) private var openURL
 
-    init(plan: IntervalPlan, video: VideoSource? = nil) {
+    init(plan: IntervalPlan, video: VideoSource? = nil, workout: Workout? = nil) {
         self.video = video
+        self.workout = workout
         _run = State(initialValue: IntervalRun(plan: plan))
     }
 
@@ -18,18 +21,7 @@ struct RunView: View {
         NavigationStack {
             VStack(spacing: 28) {
                 if let video {
-                    // ponytail: 3단계에서 앱 안 플레이어로 바꾼다. 지금은 YouTube 앱·사파리로 연다
-                    Button { openURL(video.url) } label: {
-                        VideoThumbnail(source: video)
-                            .overlay {
-                                Image(systemName: "play.circle.fill")
-                                    .font(.system(size: 48))
-                                    .foregroundStyle(.white)
-                                    .shadow(radius: 6)
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("영상 열기")
+                    VideoPlayerView(source: video)
                 } else {
                     Spacer()
                 }
@@ -40,6 +32,11 @@ struct RunView: View {
                 }
                 .buttonStyle(.pill(.secondary))
                 .disabled(isDone)
+                if isLogged {
+                    Label("건강 앱에 기록했어요", systemImage: "heart.fill")
+                        .font(.nunito(.subheadline, .medium))
+                        .foregroundStyle(.secondary)
+                }
                 Spacer()
             }
             .padding(16)
@@ -72,6 +69,11 @@ struct RunView: View {
         }
         .sensoryFeedback(.impact(weight: .heavy), trigger: run.step) { _, _ in !isDone }
         .sensoryFeedback(.success, trigger: isDone) { _, done in done }
+        .task(id: isDone) {
+            // ponytail: 끝까지 마친 실행만 기록한다. 중간에 끝내도 남기려면 끝내기에서도 저장
+            guard isDone, let workout else { return }
+            isLogged = (try? await Health.save(workout, from: startedAt, to: .now)) != nil
+        }
         // 운동 중에는 화면이 꺼지지 않게 한다
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }

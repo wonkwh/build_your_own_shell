@@ -28,13 +28,22 @@
   - 썸네일 `https://i.ytimg.com/vi/<ID>/hqdefault.jpg`
 - [x] 실행 화면: 위에 16:9 영상 자리, 아래로 작은 링, −10초 / +10초, 일시정지. 지금은 썸네일을 누르면 YouTube 앱·사파리로 연다 (3단계에서 앱 안 플레이어로)
 
+## 건강 앱 연동
+
+- [x] 루틴마다 건강 앱 운동 종류(고강도 인터벌·근력·요가·필라테스·스트레칭·댄스) 선택, 고르면 쓰기 권한 요청
+- [x] 끝까지 마친 실행을 `HKWorkoutBuilder` 로 운동 기록 저장, 완료 화면에 "건강 앱에 기록했어요"
+- [ ] 중간에 끝낸 실행도 기록할지, 일시정지 구간을 pause 이벤트로 남길지
+- [ ] 소모 칼로리 (Apple Watch 없이 추정치를 넣을지)
+
 ## 3단계: 플레이어
 
-- [ ] `WKWebView` + YouTube IFrame Player API, 화면 안 재생(`playsinline`)
-- [ ] JS → 앱으로 재생 상태·오류 전달
-- [ ] 오류 101·150(퍼가기 막힘), 오프라인, 로딩 실패면 "YouTube에서 열기" 버튼
-- [ ] 쿠키를 줄이려면 `youtube-nocookie.com` 검토
-- [ ] 영상 파일: AVKit `VideoPlayer`, 로딩 실패·오프라인이면 오류 문구
+- [x] `WKWebView` + YouTube IFrame Player API, 화면 안 재생(`playsinline`). 페이지 주소를 `https://<번들 ID>.app` 로 두어 origin 확인(오류 153)을 통과
+- [x] JS → 앱으로 오류 전달 (재생 상태는 타이머와 묶을 때 더한다)
+- [x] 플레이어 오류(101·150 등), IFrame API 로딩 실패(오프라인)면 썸네일 위에 "YouTube에서 열기"
+- [x] `youtube-nocookie.com` 호스트로 재생
+- [x] 플레이어 안 링크(YouTube 로고, 다른 영상)는 웹뷰 밖 YouTube 앱·사파리로
+- [x] 영상 파일: AVKit `VideoPlayer`, 열 수 없으면 "Safari에서 열기"
+- [ ] 플레이어가 뜬 뒤 끊긴 네트워크는 YouTube·AVKit 기본 화면에 맡김
 
 ## 4단계: 나중에
 
@@ -49,3 +58,4 @@
 - [ ] YouTube API 개발자 정책 원문 확인: 플레이어 가리기·소리만 재생·백그라운드 재생 금지, 플레이어 최소 크기 200×200
 - [ ] App Store 개인정보 라벨에 앱 안 재생 시 YouTube 쿠키·추적 반영
 - [ ] 앱 이름의 "Tube" 가 YouTube 브랜드 가이드에 걸리는지
+- [ ] HealthKit: App ID 에 HealthKit 켜기, 개인정보 라벨에 건강 데이터, 심사 노트에 건강 앱 기록 설명

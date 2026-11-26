@@ -11,6 +11,7 @@
 		131FE81F13BB5CB4CA77ED72 /* Nunito-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D721B5EB3BE99148A0B4D3E9 /* Nunito-SemiBold.ttf */; };
 		1384665C0595950946DB9B82 /* Nunito-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = ECEDF16D6FE9DFF68D78CE5B /* Nunito-Bold.ttf */; };
 		243A6D6E835A01FC7FCC36EA /* RoutineListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8E8814C901A77D6D5440A4 /* RoutineListView.swift */; };
+		286445698C0FEAE21D652844 /* VideoPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87AA38320CCC941527AC4F4F /* VideoPlayerView.swift */; };
 		3DF87A0E3E3B71C961949B1E /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F929C1FE97614E3A74E1200 /* Components.swift */; };
 		42F4B1B859A0C8BB00786F8B /* RunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DDB26765302073E5984611E /* RunView.swift */; };
 		45758C1353F6E91455EC0D0E /* NanumSquareRoundB.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3B2AAE8534973F6470D2BC2A /* NanumSquareRoundB.ttf */; };
@@ -25,6 +26,7 @@
 		A4167CFA37811DD520427990 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0658F82DF0A7B89B5DE1D98F /* Typography.swift */; };
 		C04C705ECA3D02ECD643B021 /* IntervalRunTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0DF59CECD2D3B3F036D45EB /* IntervalRunTests.swift */; };
 		C35C7AA8D301260A7BED7F31 /* Nunito-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 791B4444C0879B7DE63FA4D8 /* Nunito-Regular.ttf */; };
+		D29F20A4EA7F292832098074 /* Health.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A867D31B22E1082D65A000C /* Health.swift */; };
 		E85D72B047C3E1430CEBBA63 /* VideoSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 008A986EC177F5C1010E3359 /* VideoSourceTests.swift */; };
 		EB1B0C6371C7B55D2AF544DF /* OFL-NanumSquareRound.txt in Resources */ = {isa = PBXBuildFile; fileRef = 1F1881C93BDA5FF56D4D7C0C /* OFL-NanumSquareRound.txt */; };
 		FFE5DAD50637CF9ED6C659C8 /* OFL-Nunito.txt in Resources */ = {isa = PBXBuildFile; fileRef = 53396CA6BDAA7516E590B447 /* OFL-Nunito.txt */; };
@@ -43,6 +45,7 @@
 /* Begin PBXFileReference section */
 		008A986EC177F5C1010E3359 /* VideoSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSourceTests.swift; sourceTree = "<group>"; };
 		0658F82DF0A7B89B5DE1D98F /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
+		0A867D31B22E1082D65A000C /* Health.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Health.swift; sourceTree = "<group>"; };
 		1C320D5456505CA744150355 /* TubeTimer.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TubeTimer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1F1881C93BDA5FF56D4D7C0C /* OFL-NanumSquareRound.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-NanumSquareRound.txt"; sourceTree = "<group>"; };
 		2874E5E9F714DE92183FA961 /* Routine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Routine.swift; sourceTree = "<group>"; };
@@ -55,8 +58,10 @@
 		70858D75DF89D5EDCDA9F55C /* VideoSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSource.swift; sourceTree = "<group>"; };
 		791B4444C0879B7DE63FA4D8 /* Nunito-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Regular.ttf"; sourceTree = "<group>"; };
 		8267986655A3CB4888481C9B /* TubeTimerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TubeTimerApp.swift; sourceTree = "<group>"; };
+		87AA38320CCC941527AC4F4F /* VideoPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlayerView.swift; sourceTree = "<group>"; };
 		A0F055E632CD9C85E4329262 /* IntervalRun.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntervalRun.swift; sourceTree = "<group>"; };
 		AEB855FABE8DA01817274001 /* Nunito-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Medium.ttf"; sourceTree = "<group>"; };
+		BD5EC70A188D625685F23AA2 /* TubeTimer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TubeTimer.entitlements; sourceTree = "<group>"; };
 		CDBE84F10DAFABAAB40100AF /* TubeTimerTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TubeTimerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D721B5EB3BE99148A0B4D3E9 /* Nunito-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-SemiBold.ttf"; sourceTree = "<group>"; };
 		DF348549A79DFA9188119705 /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
@@ -122,12 +127,15 @@
 		CF252E8662136E2C0C05CC42 /* TubeTimer */ = {
 			isa = PBXGroup;
 			children = (
+				0A867D31B22E1082D65A000C /* Health.swift */,
 				A0F055E632CD9C85E4329262 /* IntervalRun.swift */,
 				2874E5E9F714DE92183FA961 /* Routine.swift */,
 				EE8E8814C901A77D6D5440A4 /* RoutineListView.swift */,
 				5DDB26765302073E5984611E /* RunView.swift */,
 				DF348549A79DFA9188119705 /* SetupView.swift */,
+				BD5EC70A188D625685F23AA2 /* TubeTimer.entitlements */,
 				8267986655A3CB4888481C9B /* TubeTimerApp.swift */,
+				87AA38320CCC941527AC4F4F /* VideoPlayerView.swift */,
 				70858D75DF89D5EDCDA9F55C /* VideoSource.swift */,
 				EACAF4BE293E270425E4AFDF /* VideoThumbnail.swift */,
 				52FB7B019239CC447CA2DF23 /* DesignSystem */,
@@ -245,6 +253,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				3DF87A0E3E3B71C961949B1E /* Components.swift in Sources */,
+				D29F20A4EA7F292832098074 /* Health.swift in Sources */,
 				014F0EC43FEE06DEFD4A37BA /* IntervalRun.swift in Sources */,
 				496AF20B363AF750D56F51CE /* Routine.swift in Sources */,
 				243A6D6E835A01FC7FCC36EA /* RoutineListView.swift in Sources */,
@@ -253,6 +262,7 @@
 				6679599BFF6515143A304089 /* Theme.swift in Sources */,
 				462E409029D69E26AB61C229 /* TubeTimerApp.swift in Sources */,
 				A4167CFA37811DD520427990 /* Typography.swift in Sources */,
+				286445698C0FEAE21D652844 /* VideoPlayerView.swift in Sources */,
 				61F842A215C25B72D48B76EB /* VideoSource.swift in Sources */,
 				7DE3DEEE9A073FDE1B7AD2C0 /* VideoThumbnail.swift in Sources */,
 			);
@@ -339,10 +349,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = TubeTimer/TubeTimer.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = TubeTimer;
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "마친 운동을 건강 앱에 기록해요";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
@@ -454,10 +466,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = TubeTimer/TubeTimer.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = TubeTimer;
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "마친 운동을 건강 앱에 기록해요";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;

@@ -12,6 +12,8 @@ final class Routine {
     var videoURL: URL?
     /// 링크를 붙일 때 받아 둔 영상 제목
     var videoTitle: String?
+    /// 고르면 끝까지 마친 실행을 건강 앱에 운동으로 기록한다
+    var workout: Workout?
     var createdAt: Date
 
     init(name: String = "인터벌", sets: Int = 8, work: Int = 40, rest: Int = 20, videoURL: URL? = nil, createdAt: Date = .now) {
