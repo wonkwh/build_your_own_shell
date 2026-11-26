@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import TubeTimer
+@testable import Workalong
 
 @MainActor
 struct IntervalRunTests {

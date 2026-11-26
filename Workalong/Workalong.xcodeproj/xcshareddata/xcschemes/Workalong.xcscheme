@@ -15,10 +15,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "2D750BA455FCF13DC3739A22"
-               BuildableName = "TubeTimer.app"
-               BlueprintName = "TubeTimer"
-               ReferencedContainer = "container:TubeTimer.xcodeproj">
+               BlueprintIdentifier = "4CCEC85D191094BE9E3187E8"
+               BuildableName = "Workalong.app"
+               BlueprintName = "Workalong"
+               ReferencedContainer = "container:Workalong.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -32,10 +32,10 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2D750BA455FCF13DC3739A22"
-            BuildableName = "TubeTimer.app"
-            BlueprintName = "TubeTimer"
-            ReferencedContainer = "container:TubeTimer.xcodeproj">
+            BlueprintIdentifier = "4CCEC85D191094BE9E3187E8"
+            BuildableName = "Workalong.app"
+            BlueprintName = "Workalong"
+            ReferencedContainer = "container:Workalong.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
@@ -44,10 +44,10 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "B9A823143DC8C373ADCC4160"
-               BuildableName = "TubeTimerTests.xctest"
-               BlueprintName = "TubeTimerTests"
-               ReferencedContainer = "container:TubeTimer.xcodeproj">
+               BlueprintIdentifier = "3CF9C0B5E8CDD3A2153881C9"
+               BuildableName = "WorkalongTests.xctest"
+               BlueprintName = "WorkalongTests"
+               ReferencedContainer = "container:Workalong.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -68,10 +68,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2D750BA455FCF13DC3739A22"
-            BuildableName = "TubeTimer.app"
-            BlueprintName = "TubeTimer"
-            ReferencedContainer = "container:TubeTimer.xcodeproj">
+            BlueprintIdentifier = "4CCEC85D191094BE9E3187E8"
+            BuildableName = "Workalong.app"
+            BlueprintName = "Workalong"
+            ReferencedContainer = "container:Workalong.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -85,10 +85,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2D750BA455FCF13DC3739A22"
-            BuildableName = "TubeTimer.app"
-            BlueprintName = "TubeTimer"
-            ReferencedContainer = "container:TubeTimer.xcodeproj">
+            BlueprintIdentifier = "4CCEC85D191094BE9E3187E8"
+            BuildableName = "Workalong.app"
+            BlueprintName = "Workalong"
+            ReferencedContainer = "container:Workalong.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

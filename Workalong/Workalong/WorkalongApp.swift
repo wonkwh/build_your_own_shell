@@ -2,7 +2,7 @@ import SwiftData
 import SwiftUI
 
 @main
-struct TubeTimerApp: App {
+struct WorkalongApp: App {
     let container: ModelContainer
 
     init() {

@@ -1,4 +1,4 @@
-name: TubeTimer
+name: Workalong
 options:
   bundleIdPrefix: com.wonkwh
   developmentLanguage: ko
@@ -11,23 +11,23 @@ settings:
     SWIFT_APPROACHABLE_CONCURRENCY: YES
     DEVELOPMENT_TEAM: AEVQL949E2
 targets:
-  TubeTimer:
+  Workalong:
     type: application
     platform: iOS
-    sources: [TubeTimer]
+    sources: [Workalong]
     entitlements:
-      path: TubeTimer/TubeTimer.entitlements
+      path: Workalong/Workalong.entitlements
       properties:
         com.apple.developer.healthkit: true
         com.apple.developer.healthkit.access: []
-        com.apple.security.application-groups: [group.com.wonkwh.TubeTimer]
+        com.apple.security.application-groups: [group.com.wonkwh.Workalong]
     dependencies:
-      - target: TubeTimerShare
+      - target: WorkalongShare
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.wonkwh.TubeTimer
+        PRODUCT_BUNDLE_IDENTIFIER: com.wonkwh.Workalong
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: TubeTimer
+        INFOPLIST_KEY_CFBundleDisplayName: Workalong
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: 마친 운동을 건강 앱에 기록해요
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
@@ -35,21 +35,21 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
-  TubeTimerShare:
+  WorkalongShare:
     type: app-extension
     platform: iOS
     # 공유 확장이 루틴을 만들 때 쓰는 모델 파일만 함께 빌드한다
     sources:
       - ShareExtension
-      - TubeTimer/Routine.swift
-      - TubeTimer/VideoSource.swift
-      - TubeTimer/IntervalRun.swift
-      - TubeTimer/Health.swift
-      - TubeTimer/DesignSystem/Theme.swift
+      - Workalong/Routine.swift
+      - Workalong/VideoSource.swift
+      - Workalong/IntervalRun.swift
+      - Workalong/Health.swift
+      - Workalong/DesignSystem/Theme.swift
     info:
       path: ShareExtension/Info.plist
       properties:
-        CFBundleDisplayName: TubeTimer
+        CFBundleDisplayName: Workalong
         NSExtension:
           NSExtensionPointIdentifier: com.apple.share-services
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
@@ -58,28 +58,28 @@ targets:
               NSExtensionActivationSupportsWebURLWithMaxCount: 1
               NSExtensionActivationSupportsText: true
     entitlements:
-      path: ShareExtension/TubeTimerShare.entitlements
+      path: ShareExtension/WorkalongShare.entitlements
       properties:
-        com.apple.security.application-groups: [group.com.wonkwh.TubeTimer]
+        com.apple.security.application-groups: [group.com.wonkwh.Workalong]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.wonkwh.TubeTimer.Share
+        PRODUCT_BUNDLE_IDENTIFIER: com.wonkwh.Workalong.Share
         TARGETED_DEVICE_FAMILY: "1"
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
-  TubeTimerTests:
+  WorkalongTests:
     type: bundle.unit-test
     platform: iOS
-    sources: [TubeTimerTests]
+    sources: [WorkalongTests]
     dependencies:
-      - target: TubeTimer
+      - target: Workalong
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
 schemes:
-  TubeTimer:
+  Workalong:
     build:
       targets:
-        TubeTimer: all
+        Workalong: all
     test:
-      targets: [TubeTimerTests]
+      targets: [WorkalongTests]

@@ -103,7 +103,7 @@ private struct YouTubePlayer: UIViewRepresentable {
     let onFail: () -> Void
 
     // IFrame API 가 origin 을 확인하므로 앱 번들 ID 로 만든 https 주소를 페이지 주소로 쓴다
-    private static let origin = URL(string: "https://\(Bundle.main.bundleIdentifier ?? "tubetimer").app")!
+    private static let origin = URL(string: "https://\(Bundle.main.bundleIdentifier ?? "workalong").app")!
 
     func makeCoordinator() -> Coordinator { Coordinator(onFail: onFail) }
 

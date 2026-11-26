@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 import Testing
-@testable import TubeTimer
+@testable import Workalong
 
 struct VideoSourceTests {
     @Test(arguments: [

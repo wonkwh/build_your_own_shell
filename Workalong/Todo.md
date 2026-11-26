@@ -59,6 +59,6 @@
 
 - [ ] YouTube API 개발자 정책 원문 확인: 플레이어 가리기·소리만 재생·백그라운드 재생 금지, 플레이어 최소 크기 200×200
 - [ ] App Store 개인정보 라벨에 앱 안 재생 시 YouTube 쿠키·추적 반영
-- [ ] 앱 이름의 "Tube" 가 YouTube 브랜드 가이드에 걸리는지
-- [ ] App Group `group.com.wonkwh.TubeTimer` 를 개발자 계정에 등록 (실기기 설치에 필요)
+- [x] 앱 이름을 Workalong 으로 바꿔 YouTube 브랜드 가이드에 걸릴 수 있는 "Tube" 를 뺌
+- [ ] App Group `group.com.wonkwh.Workalong` 를 개발자 계정에 등록 (실기기 설치에 필요)
 - [ ] HealthKit: App ID 에 HealthKit 켜기, 개인정보 라벨에 건강 데이터, 심사 노트에 건강 앱 기록 설명

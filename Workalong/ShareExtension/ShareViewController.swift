@@ -47,7 +47,7 @@ private struct ShareView: View {
             .padding(24)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.background.ignoresSafeArea())
-            .navigationTitle("TubeTimer")
+            .navigationTitle("Workalong")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("완료", action: done) }
