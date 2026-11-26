@@ -20,6 +20,9 @@ targets:
       properties:
         com.apple.developer.healthkit: true
         com.apple.developer.healthkit.access: []
+        com.apple.security.application-groups: [group.com.wonkwh.TubeTimer]
+    dependencies:
+      - target: TubeTimerShare
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.wonkwh.TubeTimer
@@ -29,6 +32,38 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+  TubeTimerShare:
+    type: app-extension
+    platform: iOS
+    # 공유 확장이 루틴을 만들 때 쓰는 모델 파일만 함께 빌드한다
+    sources:
+      - ShareExtension
+      - TubeTimer/Routine.swift
+      - TubeTimer/VideoSource.swift
+      - TubeTimer/IntervalRun.swift
+      - TubeTimer/Health.swift
+      - TubeTimer/DesignSystem/Theme.swift
+    info:
+      path: ShareExtension/Info.plist
+      properties:
+        CFBundleDisplayName: TubeTimer
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationSupportsText: true
+    entitlements:
+      path: ShareExtension/TubeTimerShare.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.wonkwh.TubeTimer]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wonkwh.TubeTimer.Share
         TARGETED_DEVICE_FAMILY: "1"
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"

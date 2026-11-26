@@ -35,13 +35,7 @@ final class IntervalRun {
 
     var isPaused: Bool { paused != nil }
 
-    var duration: TimeInterval {
-        switch phase {
-        case .work: TimeInterval(plan.work)
-        case .rest: TimeInterval(plan.rest)
-        case .done: 0
-        }
-    }
+    var duration: TimeInterval { duration(of: phase) }
 
     var remaining: TimeInterval { paused ?? max(0, (end ?? now).timeIntervalSince(now)) }
 
@@ -74,22 +68,43 @@ final class IntervalRun {
         }
     }
 
-    private func advance(from start: Date) {
+    /// 지금부터 끝날 때까지 구간이 바뀌는 시각과 바뀐 뒤의 세트·구간. 멈춰 있으면 빈 배열
+    func upcomingChanges() -> [(date: Date, set: Int, phase: Phase)] {
+        guard var date = end else { return [] }
+        var (set, phase) = (set, phase)
+        var changes: [(date: Date, set: Int, phase: Phase)] = []
+        while phase != .done {
+            (set, phase) = following(set, phase)
+            changes.append((date, set, phase))
+            date += duration(of: phase)
+        }
+        return changes
+    }
+
+    private func duration(of phase: Phase) -> TimeInterval {
         switch phase {
-        case .work where set < plan.sets && plan.rest > 0:
-            phase = .rest
-        case .work where set < plan.sets, .rest:
-            set += 1
-            phase = .work
-        case .work, .done:
-            phase = .done
+        case .work: TimeInterval(plan.work)
+        case .rest: TimeInterval(plan.rest)
+        case .done: 0
+        }
+    }
+
+    /// 구간 전환 규칙. 마지막 세트 뒤와 휴식 0 이면 휴식을 건너뛴다
+    private func following(_ set: Int, _ phase: Phase) -> (Int, Phase) {
+        switch phase {
+        case .work where set < plan.sets && plan.rest > 0: (set, .rest)
+        case .work where set < plan.sets, .rest: (set + 1, .work)
+        case .work, .done: (set, .done)
+        }
+    }
+
+    private func advance(from start: Date) {
+        (set, phase) = following(set, phase)
+        step += 1
+        if phase == .done {
             end = nil
             paused = nil
-            step += 1
-            return
-        }
-        step += 1
-        if paused != nil {
+        } else if paused != nil {
             paused = duration
         } else {
             end = start.addingTimeInterval(duration)

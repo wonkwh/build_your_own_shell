@@ -8,6 +8,7 @@ struct RunView: View {
     @State private var startedAt = Date.now
     @State private var isLogged = false
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
 
     init(plan: IntervalPlan, video: VideoSource? = nil, workout: Workout? = nil) {
         self.video = video
@@ -16,12 +17,17 @@ struct RunView: View {
     }
 
     private var isDone: Bool { run.phase == .done }
+    private var seconds: Int { Int(run.remaining.rounded(.up)) }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 28) {
                 if let video {
-                    VideoPlayerView(source: video)
+                    VideoPlayerView(source: video, isPaused: run.isPaused) { playing in
+                        // 백그라운드로 갈 때 시스템이 영상을 멈춰도 타이머는 계속 간다
+                        guard UIApplication.shared.applicationState == .active else { return }
+                        if playing == run.isPaused { run.togglePause() }
+                    }
                 } else {
                     Spacer()
                 }
@@ -74,13 +80,24 @@ struct RunView: View {
             guard isDone, let workout else { return }
             isLogged = (try? await Health.save(workout, from: startedAt, to: .now)) != nil
         }
+        .onChange(of: seconds) { _, seconds in
+            if (1...3).contains(seconds), !run.isPaused, !isDone { Cues.countdown() }
+        }
+        .onChange(of: run.step) { Cues.changed(done: isDone) }
+        .task { await Cues.requestNotifications() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { Cues.scheduleChanges(of: run) }
+            if phase == .active { Cues.cancelChanges() }
+        }
         // 운동 중에는 화면이 꺼지지 않게 한다
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
-        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+        .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
+            Cues.cancelChanges()
+        }
     }
 
     private var ring: some View {
-        let seconds = Int(run.remaining.rounded(.up))
         let progress = isDone ? 1 : min(1, run.remaining / max(run.duration, 1))
         return ZStack {
             Circle().stroke(Theme.fill, lineWidth: 16)

@@ -54,4 +54,15 @@ struct IntervalRunTests {
         run.tick(start + 105)
         #expect((run.set, run.phase) == (2, .work))
     }
+
+    @Test func upcomingChangesUntilDone() {
+        let run = IntervalRun(plan: plan, now: start)
+        run.tick(start + 3)
+        let changes = run.upcomingChanges()
+        #expect(changes.map(\.date) == [start + 10, start + 15, start + 25])
+        #expect(changes.map(\.set) == [1, 2, 2])
+        #expect(changes.map(\.phase) == [.rest, .work, .done])
+        run.togglePause()
+        #expect(run.upcomingChanges().isEmpty)
+    }
 }
