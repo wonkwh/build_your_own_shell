@@ -135,6 +135,12 @@ struct StoreTests {
 }
 
 struct PDFTests {
+    /// 샘플 PDF 는 무료 사용자도 열 수 있어야 한다.
+    @Test func samplePDFIsFree() throws {
+        let url = try #require(Bundle.main.url(forResource: SamplePicker.pdfName, withExtension: nil))
+        #expect(CGPDFDocument(url as CFURL)?.numberOfPages == PDFSupport.freePageLimit)
+    }
+
     /// 텍스트가 든 2쪽 PDF 를 가려 내보내면 쪽 크기는 그대로, 텍스트 층은 사라져야 한다.
     @Test func exportFlattensText() throws {
         let page = CGRect(x: 0, y: 0, width: 595, height: 842)

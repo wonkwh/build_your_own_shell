@@ -1,3 +1,4 @@
+import PDFKit
 import SwiftUI
 
 /// 홈의 전후 비교. 원본에 대해 앱의 검출기를 실제로 돌려 찾은 영역을 상자로 보여 준다.
@@ -149,8 +150,9 @@ struct BeforeAfterComparison: View {
     }
 }
 
-/// 쇼케이스 원본(`showcase_N_1`)을 골라 바로 검사해 볼 수 있는 시트.
+/// 쇼케이스 원본(`showcase_N_1`)이나 샘플 PDF 를 골라 바로 검사해 볼 수 있는 시트.
 struct SamplePicker: View {
+    static let pdfName = "PrivacyCam_Sample.pdf"
     let onPick: (String) -> Void
 
     var body: some View {
@@ -167,14 +169,35 @@ struct SamplePicker: View {
                         }
                         .accessibilityLabel("샘플 \(n)")
                     }
+                    Button { onPick(Self.pdfName) } label: {
+                        Color.white
+                            .aspectRatio(3 / 4, contentMode: .fit)
+                            .overlay(alignment: .top) { pdfThumbnail?.resizable().scaledToFit() }
+                            .overlay(alignment: .bottomLeading) {
+                                Label("PDF 2쪽", systemImage: "doc.text")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 8).padding(.vertical, 5)
+                                    .background(Theme.accent, in: Capsule())
+                                    .padding(8)
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+                    .accessibilityLabel("샘플 PDF")
                 }
                 .padding()
             }
-            .navigationTitle("샘플 사진")
+            .navigationTitle("샘플")
             .navigationBarTitleDisplayMode(.inline)
         }
         .presentationDetents([.medium, .large])
         .presentationBackground(Theme.background)
+    }
+
+    private var pdfThumbnail: Image? {
+        guard let url = Bundle.main.url(forResource: Self.pdfName, withExtension: nil),
+              let page = PDFDocument(url: url)?.page(at: 0) else { return nil }
+        return Image(uiImage: page.thumbnail(of: CGSize(width: 300, height: 424), for: .cropBox))
     }
 }
 

@@ -118,7 +118,9 @@ struct HomeView: View {
             CameraPicker { captured = $0 }.ignoresSafeArea()
         }
         .sheet(isPresented: $showSamples, onDismiss: {
-            if let name = sample, let image = UIImage(named: name)?.cgImage {
+            if sample == SamplePicker.pdfName {
+                if let url = Bundle.main.url(forResource: SamplePicker.pdfName, withExtension: nil) { openPDF(.success(url)) }
+            } else if let name = sample, let image = UIImage(named: name)?.cgImage {
                 batch = Batch([.image(image)])
             }
             sample = nil

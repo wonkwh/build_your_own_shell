@@ -43,6 +43,8 @@ open PrivacyCam.xcodeproj
 무료는 사진 한 장씩과 2쪽까지의 PDF, Pro(비소모성 `com.wonkwh.privacycam.pro`, $4.99) 는 사진 최대 10장과 PDF 50쪽까지 처리한다.
 App Store Connect 에 같은 ID 로 상품을 만들어야 실기기에서 보인다. 로컬 테스트는 `PrivacyCam.storekit` (Xcode Run, `StoreTests`).
 
+`PrivacyCam/Samples/PrivacyCam_Sample.pdf` 는 가상의 이름·연락처·카드(테스트 번호)로 만든 2쪽 문서이고, 2쪽 사진은 위 4번이다. 다시 만들려면 `tools/make_sample_pdf.swift`.
+
 ## 시뮬레이터 제약
 
 - Core ML·Vision 신경망 요청은 시뮬레이터에서 CPU 로 강제한다 (GPU 경로가 0 을 내거나 실패).
