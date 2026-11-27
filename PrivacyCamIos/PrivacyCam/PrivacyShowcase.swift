@@ -1,66 +1,63 @@
 import SwiftUI
 
-private let forest = Color(red: 0x14 / 255, green: 0x6B / 255, blue: 0x55 / 255)
-private let mint = Color(red: 0xE4 / 255, green: 0xF3 / 255, blue: 0xEC / 255)
-
-/// 홈의 "보호 결과 보기" 카드. 에셋 `showcase_N_1`(원본)·`showcase_N_2`(보호본) 쌍을 비교한다.
+/// 홈의 전후 비교. 원본에 대해 앱의 검출기를 실제로 돌려 찾은 영역을 상자로 보여 준다.
 struct PrivacyShowcase: View {
     static let pairCount = 4
     @State private var index = 1
+    @State private var detections: [Int: ShowcaseDetection] = [:]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Image(systemName: "wand.and.stars")
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(forest)
-                    .frame(width: 38, height: 38)
-                    .background(mint, in: RoundedRectangle(cornerRadius: 12))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("보호 결과 보기").font(.headline.weight(.heavy))
-                    Text("사진을 드래그해 비교하세요").font(.footnote).foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 0)
-                Label("온디바이스", systemImage: "iphone")
-                    .font(.system(size: 10, weight: .heavy))
-                    .foregroundStyle(forest)
-                    .padding(.horizontal, 8).padding(.vertical, 6)
-                    .background(mint.opacity(0.6), in: Capsule())
-            }
-            .padding(.horizontal, 5)
-
-            BeforeAfterComparison(original: "showcase_\(index)_1", protected: "showcase_\(index)_2")
+            BeforeAfterComparison(original: "showcase_\(index)_1", protected: "showcase_\(index)_2", detection: detections[index])
                 .id(index)
                 .transition(.opacity)
-
-            HStack(spacing: 7) {
-                Image(systemName: "hand.draw").foregroundStyle(forest)
-                Text("핸들을 밀어 보세요. 사진은 기기 밖으로 나가지 않습니다.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            HStack(spacing: 0) {
+                ForEach(1...Self.pairCount, id: \.self) { n in
+                    Button { withAnimation { index = n } } label: {
+                        Capsule()
+                            .fill(n == index ? Theme.accent : Theme.fill)
+                            .frame(width: n == index ? 18 : 6, height: 6)
+                            // 점은 작아도 누르는 영역은 넓게
+                            .frame(minWidth: 28, minHeight: 32)
+                            .contentShape(.rect)
+                    }
+                    .accessibilityLabel("예시 \(n)")
+                    .accessibilityAddTraits(n == index ? .isSelected : [])
+                }
                 Spacer(minLength: 0)
-                Button("이전 예시", systemImage: "chevron.left") { withAnimation { index -= 1 } }
-                    .disabled(index == 1)
-                Text("\(index)/\(Self.pairCount)").font(.caption.weight(.heavy)).monospacedDigit()
-                Button("다음 예시", systemImage: "chevron.right") { withAnimation { index += 1 } }
-                    .disabled(index == Self.pairCount)
             }
-            .labelStyle(.iconOnly)
-            .tint(forest)
-            .padding(.horizontal, 5)
+            HStack(spacing: 6) {
+                ForEach(["얼굴", "번호판", "개인정보 텍스트", "QR"], id: \.self) { label in
+                    Text(label)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(Theme.accent.opacity(0.12), in: Capsule())
+                }
+            }
+            .accessibilityElement(children: .combine)
         }
-        .padding(EdgeInsets(top: 14, leading: 12, bottom: 12, trailing: 12))
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 26))
-        .overlay(RoundedRectangle(cornerRadius: 26).strokeBorder(Color(.separator).opacity(0.5)))
-        .shadow(color: .black.opacity(0.07), radius: 12, y: 10)
+        .task(id: index) { await detect(index) }
     }
+
+    private func detect(_ n: Int) async {
+        guard detections[n] == nil, let image = UIImage(named: "showcase_\(n)_1")?.cgImage else { return }
+        let items = await Task.detached(priority: .utility) { await Detector.detect(image) }.value
+        withAnimation { detections[n] = ShowcaseDetection(size: CGSize(width: image.width, height: image.height), items: items.filter(\.selected)) }
+    }
+}
+
+struct ShowcaseDetection {
+    let size: CGSize
+    let items: [RedactionItem]
 }
 
 /// 보호본 위에 원본을 왼쪽부터 `reveal` 비율만큼 겹쳐 보여 주는 스와이프 비교.
 struct BeforeAfterComparison: View {
     let original: String
     let protected: String
-    @State private var reveal: CGFloat = 0.5
+    var detection: ShowcaseDetection?
+    @State private var reveal: CGFloat = 0.42
 
     var body: some View {
         GeometryReader { geo in
@@ -69,10 +66,11 @@ struct BeforeAfterComparison: View {
                 photo(protected, size)
                 photo(original, size)
                     .mask(alignment: .leading) { Rectangle().frame(width: size.width * reveal) }
+                if let detection { boxes(detection, in: size) }
                 HStack {
-                    badge("원본", .black.opacity(0.68))
+                    badge(Text("원본"), .white)
                     Spacer()
-                    badge("보호됨", forest.opacity(0.92))
+                    badge(Text("\(Image(systemName: "checkmark")) 보호됨"), Theme.positive)
                 }
                 .padding(10)
                 Rectangle().fill(.white.opacity(0.95))
@@ -80,11 +78,10 @@ struct BeforeAfterComparison: View {
                     .offset(x: size.width * reveal - 1)
                 Image(systemName: "arrow.left.and.right")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(forest)
+                    .foregroundStyle(Theme.onInk)
                     .frame(width: 40, height: 40)
-                    .background(.white, in: Circle())
-                    .overlay(Circle().strokeBorder(forest.opacity(0.28)))
-                    .shadow(color: .black.opacity(0.2), radius: 5, y: 3)
+                    .background(Theme.ink, in: Circle())
+                    .shadow(color: .black.opacity(0.3), radius: 5, y: 3)
                     .offset(x: size.width * reveal - 20, y: size.height / 2 - 20)
             }
             .contentShape(Rectangle())
@@ -94,11 +91,11 @@ struct BeforeAfterComparison: View {
                 reveal = clamp(v.location.x / size.width)
             })
         }
-        .aspectRatio(3 / 4, contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: 19))
+        .aspectRatio(1, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous))
         .accessibilityElement()
         .accessibilityLabel("원본과 보호본 비교")
-        .accessibilityValue("원본 \(Int(reveal * 100))퍼센트 보임")
+        .accessibilityValue("원본 \(Int(reveal * 100))퍼센트 보임, 가릴 곳 \(detection?.items.count ?? 0)개")
         .accessibilityAdjustableAction { direction in
             switch direction {
             case .increment: reveal = clamp(reveal + 0.1)
@@ -108,6 +105,33 @@ struct BeforeAfterComparison: View {
         }
     }
 
+    /// 이미지 픽셀 좌표를 `scaledToFill` 로 잘린 화면 좌표로 옮겨 상자를 그린다. 라벨은 3개 이하일 때만.
+    private func boxes(_ d: ShowcaseDetection, in size: CGSize) -> some View {
+        let s = max(size.width / d.size.width, size.height / d.size.height)
+        let ox = (size.width - d.size.width * s) / 2, oy = (size.height - d.size.height * s) / 2
+        return ForEach(d.items) { item in
+            let r = CGRect(x: item.bounds.minX * s + ox, y: item.bounds.minY * s + oy,
+                           width: item.bounds.width * s, height: item.bounds.height * s)
+            RoundedRectangle(cornerRadius: 5)
+                .strokeBorder(Theme.accent, lineWidth: 2)
+                .frame(width: r.width, height: r.height)
+                // 위쪽 배지와 겹치지 않게, 위에 붙은 상자는 라벨을 아래에 단다
+                .overlay(alignment: r.minY < 64 ? .bottomLeading : .topLeading) {
+                    if d.items.count <= 3 {
+                        Text("\(item.category.label) · \(item.style.label)")
+                            .font(.caption2.weight(.heavy))
+                            .foregroundStyle(Theme.onInk)
+                            .fixedSize()
+                            .padding(.horizontal, 6).padding(.vertical, 3)
+                            .background(Theme.accent, in: .rect(cornerRadius: 5))
+                            .offset(y: r.minY < 64 ? 22 : -22)
+                    }
+                }
+                .offset(x: r.minX, y: r.minY)
+        }
+        .accessibilityHidden(true)
+    }
+
     private func clamp(_ v: CGFloat) -> CGFloat { min(max(v, 0.04), 0.96) }
 
     private func photo(_ name: String, _ size: CGSize) -> some View {
@@ -115,13 +139,13 @@ struct BeforeAfterComparison: View {
             .accessibilityHidden(true)
     }
 
-    private func badge(_ text: String, _ color: Color) -> some View {
-        Text(text)
-            .font(.system(size: 11, weight: .heavy))
-            .foregroundStyle(.white)
+    private func badge(_ text: Text, _ color: Color) -> some View {
+        text
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(color)
             .padding(.horizontal, 9).padding(.vertical, 6)
-            .background(color, in: Capsule())
-            .overlay(Capsule().strokeBorder(.white.opacity(0.22)))
+            .background(.black.opacity(0.55), in: Capsule())
+            .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
     }
 }
 
@@ -150,6 +174,7 @@ struct SamplePicker: View {
             .navigationBarTitleDisplayMode(.inline)
         }
         .presentationDetents([.medium, .large])
+        .presentationBackground(Theme.background)
     }
 }
 

@@ -4,113 +4,145 @@ import SwiftUI
 @main
 struct PrivacyCamApp: App {
     var body: some Scene {
-        WindowGroup { HomeView() }
+        WindowGroup { HomeView().tint(Theme.accent) }
     }
 }
 
+/// 사진 한 장의 검출 결과. 이미지는 들고 있지 않고 필요할 때 `source` 에서 디코드한다.
 @MainActor @Observable
-final class EditSession: Identifiable {
-    let image: CGImage
-    let isPNG: Bool
+final class EditSession {
+    let source: PhotoSource
     var items: [RedactionItem] = []
     var scanning = true
+    var failed = false
 
-    init(image: CGImage, isPNG: Bool) {
-        self.image = image
-        self.isPNG = isPNG
-    }
+    init(_ source: PhotoSource) { self.source = source }
 
     func scan() async {
-        let image = image
-        items = await Task.detached(priority: .userInitiated) { await Detector.detect(image) }.value
+        let source = source
+        do {
+            items = try await Task.detached(priority: .userInitiated) { await Detector.detect(try source.load().image) }.value
+        } catch {
+            failed = true
+        }
         scanning = false
     }
 }
 
+struct Batch: Identifiable {
+    let id = UUID()
+    let pages: [EditSession]
+    var skipped = 0
+
+    @MainActor init(_ sources: [PhotoSource], skipped: Int = 0) {
+        pages = sources.map { EditSession($0) }
+        self.skipped = skipped
+    }
+}
+
 struct HomeView: View {
-    @State private var pickerItem: PhotosPickerItem?
+    @State private var pickerItems: [PhotosPickerItem] = []
     @State private var showCamera = false
     @State private var captured: Data?
     @State private var showSamples = false
     @State private var sample: String?
-    @State private var session: EditSession?
+    @State private var batch: Batch?
     @State private var error: String?
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         ScrollView {
-        VStack(spacing: 20) {
-            Image(systemName: "eye.slash.circle.fill")
-                .font(.system(size: 72))
-                .foregroundStyle(.tint)
-                .padding(.top, 24)
-            Text("PrivacyCam").font(.largeTitle.bold())
-            Text("공유하기 전에 얼굴, 번호판, 개인정보 텍스트, QR 코드를 기기 안에서 찾아 가립니다.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-            Button { showSamples = true } label: {
-                Label("샘플 사진", systemImage: "photo.stack")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            PhotosPicker(selection: $pickerItem, matching: .images) {
-                Label("사진 선택", systemImage: "photo.on.rectangle")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                Button { showCamera = true } label: {
-                    Label("사진 촬영", systemImage: "camera")
-                        .frame(maxWidth: .infinity)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 8) {
+                    Image("Logo").resizable().frame(width: 26, height: 26).clipShape(.rect(cornerRadius: 7))
+                    Text("PrivacyCam").font(.callout.weight(.bold))
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
+                .accessibilityElement(children: .combine)
+                Text("공유하기 전에,\n기기 안에서 가립니다")
+                    .font(.title.weight(.heavy))
+                    .padding(.top, 18)
+                Text("사진을 고르면 가릴 곳을 알아서 찾아 둡니다.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 6)
+                PrivacyShowcase()
+                    .padding(.top, 18)
             }
-            PrivacyShowcase()
-                .padding(.top, 8)
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
         }
-        .padding(24)
+        .scrollBounceBehavior(.basedOnSize)
+        .background {
+            ZStack(alignment: .top) {
+                Theme.background
+                if scheme == .dark {
+                    LinearGradient(colors: [Theme.accent.opacity(0.3), Theme.accent.opacity(0)], startPoint: .top, endPoint: .bottom)
+                        .frame(height: 380)
+                }
+            }
+            .ignoresSafeArea()
         }
-        .onChange(of: pickerItem) { _, item in
-            guard let item else { return }
-            pickerItem = nil
+        .safeAreaInset(edge: .bottom) { actions }
+        .onChange(of: pickerItems) { _, items in
+            guard !items.isEmpty else { return }
+            pickerItems = []
             Task {
-                do {
-                    guard let data = try await item.loadTransferable(type: Data.self) else { throw ImageError.unsupported }
-                    open(data)
-                } catch {
-                    self.error = error.localizedDescription
+                var sources: [PhotoSource] = []
+                for item in items {
+                    if let data = try? await item.loadTransferable(type: Data.self) { sources.append(.data(data)) }
+                }
+                if sources.isEmpty {
+                    error = ImageError.unsupported.localizedDescription
+                } else {
+                    batch = Batch(sources, skipped: items.count - sources.count)
                 }
             }
         }
         // 카메라가 완전히 닫힌 뒤 편집기를 띄워야 표시가 겹치지 않는다.
         .fullScreenCover(isPresented: $showCamera, onDismiss: {
-            if let data = captured { captured = nil; open(data) }
+            if let data = captured { captured = nil; batch = Batch([.data(data)]) }
         }) {
             CameraPicker { captured = $0 }.ignoresSafeArea()
         }
         .sheet(isPresented: $showSamples, onDismiss: {
             if let name = sample, let image = UIImage(named: name)?.cgImage {
-                session = EditSession(image: image, isPNG: false)
+                batch = Batch([.image(image)])
             }
             sample = nil
         }) {
             SamplePicker { sample = $0; showSamples = false }
         }
-        .fullScreenCover(item: $session) { EditorView(session: $0) }
+        .fullScreenCover(item: $batch) { EditorView(batch: $0) }
         .alert("열 수 없음", isPresented: .constant(error != nil)) {
             Button("확인") { error = nil }
         } message: { Text(error ?? "") }
     }
 
-    private func open(_ data: Data) {
-        do {
-            let loaded = try Renderer.load(data)
-            session = EditSession(image: loaded.image, isPNG: loaded.isPNG)
-        } catch {
-            self.error = error.localizedDescription
+    private var actions: some View {
+        VStack(spacing: 10) {
+            // ponytail: 원본 Data 를 메모리에 다 들고 있으므로 10장 상한. 더 필요하면 파일 URL 로 받는다.
+            PhotosPicker(selection: $pickerItems, maxSelectionCount: 10, selectionBehavior: .ordered, matching: .images) {
+                HStack(spacing: 8) {
+                    Image(systemName: "photo.on.rectangle")
+                    Text("사진 선택")
+                    Text("최대 10장").font(.subheadline).opacity(0.6)
+                }
+            }
+            .buttonStyle(.pill)
+            HStack(spacing: 10) {
+                if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                    Button("촬영", systemImage: "camera") { showCamera = true }
+                }
+                Button("샘플로 해보기") { showSamples = true }
+            }
+            .buttonStyle(.pill(.secondary))
+            Label("사진은 기기 밖으로 나가지 않습니다", systemImage: "lock.fill")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Theme.background)
     }
 }
 

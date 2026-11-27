@@ -18,8 +18,8 @@ let ctx = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, b
 ctx.translateBy(x: 0, y: s)
 ctx.scaleBy(x: 1, y: -1)
 
-// 배경: 숲색 대각 그라데이션.
-let bg = CGGradient(colorsSpace: space, colors: [rgb(0x23936F), rgb(0x0B3F32)] as CFArray, locations: [0, 1])!
+// 배경: 밤 남색 대각 그라데이션 (Theme.background 다크).
+let bg = CGGradient(colorsSpace: space, colors: [rgb(0x3A4585), rgb(0x141A2E)] as CFArray, locations: [0, 1])!
 ctx.drawLinearGradient(bg, start: .zero, end: CGPoint(x: s, y: s), options: [])
 
 // 사진 카드 내용(배경 + 흉상)을 따로 그린 뒤, 오른쪽 절반을 블록 평균색으로 모자이크한다.
@@ -29,9 +29,9 @@ let content = CGContext(data: nil, width: cw, height: cw, bitsPerComponent: 8, b
                         bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
 content.translateBy(x: 0, y: card.height)
 content.scaleBy(x: 1, y: -1)
-content.setFillColor(rgb(0xE8F5EE))
+content.setFillColor(rgb(0xECEEFA))
 content.fill(CGRect(x: 0, y: 0, width: card.width, height: card.height))
-content.setFillColor(rgb(0x146B55))
+content.setFillColor(rgb(0x5B67D8))
 content.fillEllipse(in: CGRect(x: 280 - 105, y: 98, width: 210, height: 210))
 content.addPath(CGPath(roundedRect: CGRect(x: 280 - 210, y: 348, width: 420, height: 320), cornerWidth: 190, cornerHeight: 190, transform: nil))
 content.fillPath()
@@ -51,7 +51,7 @@ for by in stride(from: 0, to: cw, by: block) {
 ctx.saveGState()
 ctx.setShadow(offset: CGSize(width: 0, height: 18), blur: 40, color: CGColor(gray: 0, alpha: 0.35))
 ctx.addPath(CGPath(roundedRect: card, cornerWidth: 112, cornerHeight: 112, transform: nil))
-ctx.setFillColor(rgb(0xE8F5EE))
+ctx.setFillColor(rgb(0xECEEFA))
 ctx.fillPath()
 ctx.restoreGState()
 ctx.saveGState()
@@ -70,8 +70,8 @@ ctx.setShadow(offset: CGSize(width: 0, height: 10), blur: 24, color: CGColor(gra
 ctx.fillEllipse(in: CGRect(x: 512 - 78, y: 512 - 78, width: 156, height: 156))
 ctx.setShadow(offset: .zero, blur: 0)
 // 바깥을 향한 채운 삼각형 두 개(◀ ▶). 꺾쇠(< >)는 코드 아이콘처럼 읽힌다.
-ctx.setFillColor(rgb(0x146B55))
-ctx.setStrokeColor(rgb(0x146B55))
+ctx.setFillColor(rgb(0x5B67D8))
+ctx.setStrokeColor(rgb(0x5B67D8))
 ctx.setLineWidth(8)
 ctx.setLineJoin(.round)
 for dir in [-1.0, 1.0] {
@@ -83,7 +83,7 @@ for dir in [-1.0, 1.0] {
 ctx.drawPath(using: .fillStroke)
 
 // 카메라 뷰파인더 모서리.
-ctx.setStrokeColor(rgb(0xCFEBDD))
+ctx.setStrokeColor(rgb(0xA8B8FF))
 ctx.setLineWidth(26)
 ctx.setLineCap(.round)
 ctx.setLineJoin(.round)

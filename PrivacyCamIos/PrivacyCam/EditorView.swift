@@ -2,8 +2,10 @@ import Photos
 import SwiftUI
 
 struct EditorView: View {
-    @Bindable var session: EditSession
+    let batch: Batch
     @Environment(\.dismiss) private var dismiss
+    @State private var current = 0
+    @State private var image: CGImage?
     @State private var preview: CGImage?
     @State private var showPreview = false
     @State private var addingBox = false
@@ -17,10 +19,11 @@ struct EditorView: View {
                 canvas.frame(maxHeight: .infinity)
                 categoryBar
             }
-            .navigationTitle(session.scanning ? "검사 중…" : "검토")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
-            .task { await session.scan() }
+            .task { for page in batch.pages where !Task.isCancelled { await page.scan() } }
+            .task(id: current) { await loadImage() }
             .task(id: showPreview ? session.items : nil) { if showPreview { await renderPreview() } }
             .sheet(item: $exported) { ExportSheet(exported: $0) }
             .alert("오류", isPresented: .constant(error != nil)) {
@@ -29,23 +32,63 @@ struct EditorView: View {
         }
     }
 
+    private var session: EditSession { batch.pages[current] }
+
+    private var title: String {
+        let base = session.scanning ? "검사 중…" : "검토"
+        return batch.pages.count > 1 ? "\(base) \(current + 1)/\(batch.pages.count)" : base
+    }
+
+    /// 보고 있는 사진만 디코드해 둔다. 페이지를 넘기면 이전 이미지는 버린다.
+    private func loadImage() async {
+        image = nil
+        preview = nil
+        showPreview = false
+        addingBox = false
+        let (page, source) = (session, session.source)
+        do {
+            let loaded = try await Task.detached(priority: .userInitiated) { try source.load().image }.value
+            guard !Task.isCancelled else { return }
+            image = loaded
+        } catch {
+            page.failed = true
+        }
+    }
+
     // MARK: 캔버스
 
-    private var canvas: some View {
+    @ViewBuilder private var canvas: some View {
+        if let image {
+            canvas(image)
+        } else {
+            ZStack {
+                Theme.background
+                if session.failed {
+                    Text("이 사진은 열 수 없어 내보내기에서 뺍니다.").foregroundStyle(Theme.caution)
+                } else {
+                    ProgressView()
+                }
+            }
+        }
+    }
+
+    private func canvas(_ image: CGImage) -> some View {
         GeometryReader { geo in
-            let imageSize = CGSize(width: session.image.width, height: session.image.height)
+            let imageSize = CGSize(width: image.width, height: image.height)
             let scale = min(geo.size.width / imageSize.width, geo.size.height / imageSize.height)
             let fitted = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
             ZStack(alignment: .topLeading) {
-                Image(decorative: showPreview ? (preview ?? session.image) : session.image, scale: 1)
+                Image(decorative: showPreview ? (preview ?? image) : image, scale: 1)
                     .resizable()
                     .frame(width: fitted.width, height: fitted.height)
                 if !showPreview {
-                    ForEach($session.items) { $item in
+                    ForEach(Bindable(session).items) { $item in
                         let r = item.bounds.applying(.init(scaleX: scale, y: scale))
+                        // 가릴 상자는 accent 실선, 끈 상자는 사진 위에서 보이도록 흰 점선
                         Rectangle()
-                            .fill(item.selected ? color(item.category).opacity(0.25) : .clear)
-                            .strokeBorder(color(item.category), style: StrokeStyle(lineWidth: 2, dash: item.selected ? [] : [5]))
+                            .fill(item.selected ? Theme.accent.opacity(0.25) : .clear)
+                            .strokeBorder(item.selected ? Theme.accent : .white.opacity(0.85),
+                                          style: StrokeStyle(lineWidth: 2, dash: item.selected ? [] : [5]))
                             .frame(width: r.width, height: r.height)
                             .offset(x: r.minX, y: r.minY)
                             .onTapGesture { item.selected.toggle() }
@@ -54,21 +97,21 @@ struct EditorView: View {
                     }
                 }
                 if let dragRect {
-                    Rectangle().strokeBorder(.yellow, lineWidth: 2)
+                    Rectangle().strokeBorder(Theme.accent, lineWidth: 2)
                         .frame(width: dragRect.width, height: dragRect.height)
                         .offset(x: dragRect.minX, y: dragRect.minY)
                 }
             }
             .frame(width: fitted.width, height: fitted.height)
             .contentShape(Rectangle())
-            .gesture(addBoxGesture(scale: scale), isEnabled: addingBox)
+            .gesture(addBoxGesture(scale: scale, size: imageSize), isEnabled: addingBox)
             .overlay { if session.scanning { ProgressView().controlSize(.large) } }
             .position(x: geo.size.width / 2, y: geo.size.height / 2)
         }
-        .background(Color.black)
+        .background(Theme.background)
     }
 
-    private func addBoxGesture(scale: CGFloat) -> some Gesture {
+    private func addBoxGesture(scale: CGFloat, size: CGSize) -> some Gesture {
         DragGesture(minimumDistance: 4)
             .onChanged { v in
                 dragRect = CGRect(x: min(v.startLocation.x, v.location.x), y: min(v.startLocation.y, v.location.y),
@@ -77,7 +120,7 @@ struct EditorView: View {
             .onEnded { _ in
                 defer { dragRect = nil }
                 guard let r = dragRect, r.width > 8, r.height > 8 else { return }
-                let bounds = CGRect(x: 0, y: 0, width: session.image.width, height: session.image.height)
+                let bounds = CGRect(origin: .zero, size: size)
                 session.items.append(RedactionItem(.manual, r.applying(.init(scaleX: 1 / scale, y: 1 / scale)).intersection(bounds)))
             }
     }
@@ -100,9 +143,16 @@ struct EditorView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
+            if batch.skipped > 0 {
+                Text("불러오지 못한 사진 \(batch.skipped)장은 빠졌습니다.")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.caution)
+                    .padding(.horizontal)
+            }
         }
         .padding(.vertical, 12)
-        .background(.bar)
+        .background(Theme.background)
+        .overlay(alignment: .top) { Theme.stroke.frame(height: 1) }
     }
 
     private var presentCategories: [RedactionCategory] {
@@ -123,12 +173,11 @@ struct EditorView: View {
             }
         } label: {
             Text("\(category.label) \(on)/\(indices.count)")
-                .font(.subheadline.weight(.medium))
-                .padding(.horizontal, 12).padding(.vertical, 6)
-                .background(color(category).opacity(on > 0 ? 0.25 : 0.08), in: Capsule())
-                .overlay(Capsule().strokeBorder(color(category)))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(on > 0 ? Theme.accent : .secondary)
+                .padding(.horizontal, 12).padding(.vertical, 7)
+                .background(on > 0 ? Theme.accent.opacity(0.12) : Theme.fill, in: Capsule())
         }
-        .tint(.primary)
     }
 
     // MARK: 툴바
@@ -140,54 +189,51 @@ struct EditorView: View {
         }
         ToolbarItemGroup(placement: .bottomBar) {
             Toggle(isOn: $addingBox) { Label("상자 추가", systemImage: "plus.rectangle") }
-                .disabled(showPreview)
+                .disabled(showPreview || image == nil)
             Spacer()
+            if batch.pages.count > 1 {
+                Button("이전 사진", systemImage: "chevron.left") { current -= 1 }
+                    .disabled(current == 0)
+                Button("다음 사진", systemImage: "chevron.right") { current += 1 }
+                    .disabled(current == batch.pages.count - 1)
+                Spacer()
+            }
             Toggle(isOn: $showPreview) { Label("미리보기", systemImage: "eye") }
+                .disabled(image == nil)
         }
         ToolbarItem(placement: .confirmationAction) {
             Button("내보내기") { Task { await export() } }
-                .disabled(session.scanning)
+                .disabled(batch.pages.contains(where: \.scanning) || batch.pages.allSatisfy(\.failed))
         }
     }
 
     // MARK: 렌더링
 
     private func renderPreview() async {
-        let (image, items) = (session.image, session.items)
+        guard let image else { return }
+        let items = session.items
         preview = try? await Task.detached { try Renderer.render(image, items: items) }.value
     }
 
+    /// 열지 못한 사진은 빼고 모두 내보낸다.
     private func export() async {
-        let (image, items, png) = (session.image, session.items, session.isPNG)
+        let jobs = batch.pages.filter { !$0.failed }.map { ($0.source, $0.items) }
         do {
-            let (rendered, data) = try await Task.detached {
-                let r = try Renderer.render(image, items: items)
-                return (r, try Renderer.encode(r, png: png))
+            let (urls, thumb) = try await Task.detached {
+                let urls = try Renderer.exportAll(jobs, to: FileManager.default.temporaryDirectory)
+                return (urls, urls.first.flatMap(Renderer.thumbnail))
             }.value
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("PrivacyCam_safe.\(png ? "png" : "jpg")")
-            try data.write(to: url, options: [.atomic, .completeFileProtection])
-            exported = Exported(url: url, image: rendered)
+            exported = Exported(urls: urls, preview: thumb)
         } catch {
             self.error = error.localizedDescription
-        }
-    }
-
-    private func color(_ c: RedactionCategory) -> Color {
-        switch c {
-        case .face, .person: .pink
-        case .numberPlate: .orange
-        case .qrCode, .barcode: .purple
-        case .manual: .yellow
-        case .otherText: .gray
-        default: .red
         }
     }
 }
 
 struct Exported: Identifiable {
     let id = UUID()
-    let url: URL
-    let image: CGImage
+    let urls: [URL]
+    let preview: CGImage?
 }
 
 struct ExportSheet: View {
@@ -197,23 +243,31 @@ struct ExportSheet: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Image(decorative: exported.image, scale: 1).resizable().scaledToFit()
+            if let preview = exported.preview {
+                Image(decorative: preview, scale: 1).resizable().scaledToFit()
+                    .clipShape(.rect(cornerRadius: 14, style: .continuous))
+            }
+            if exported.urls.count > 1 {
+                Text("첫 사진 미리보기 · 모두 \(exported.urls.count)장")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
             Label("위치·기기 정보 등 메타데이터를 제거했습니다", systemImage: "checkmark.shield")
                 .font(.footnote)
-                .foregroundStyle(.green)
-            if let error { Text(error).font(.footnote).foregroundStyle(.red) }
-            HStack {
-                Button(saved ? "저장됨" : "사진에 저장", systemImage: saved ? "checkmark" : "square.and.arrow.down") {
-                    Task { await save() }
-                }
-                .disabled(saved)
-                ShareLink(item: exported.url)
+                .foregroundStyle(Theme.positive)
+            if let error { Text(error).font(.footnote).foregroundStyle(Theme.caution) }
+            Button(saved ? "저장됨" : exported.urls.count > 1 ? "사진에 \(exported.urls.count)장 저장" : "사진에 저장", systemImage: saved ? "checkmark" : "square.and.arrow.down") {
+                Task { await save() }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.pill)
+            .disabled(saved)
+            ShareLink(items: exported.urls) { Label("공유", systemImage: "square.and.arrow.up") }
+                .buttonStyle(.pill(.secondary))
         }
-        .padding()
+        .padding(16)
         .presentationDetents([.medium, .large])
-        .onDisappear { try? FileManager.default.removeItem(at: exported.url) }
+        .presentationBackground(Theme.background)
+        .onDisappear { exported.urls.forEach { try? FileManager.default.removeItem(at: $0) } }
     }
 
     private func save() async {
@@ -222,7 +276,7 @@ struct ExportSheet: View {
             return
         }
         do {
-            try await Self.addToPhotos(exported.url)
+            try await Self.addToPhotos(exported.urls)
             saved = true
         } catch {
             self.error = error.localizedDescription
@@ -231,9 +285,11 @@ struct ExportSheet: View {
 
     /// 검증한 파일을 다시 인코딩하지 않고 그대로 추가한다.
     /// `performChanges` 블록은 백그라운드 큐에서 돌므로 MainActor 밖에서 만든다.
-    nonisolated private static func addToPhotos(_ url: URL) async throws {
+    nonisolated private static func addToPhotos(_ urls: [URL]) async throws {
         try await PHPhotoLibrary.shared().performChanges {
-            PHAssetCreationRequest.forAsset().addResource(with: .photo, fileURL: url, options: nil)
+            for url in urls {
+                PHAssetCreationRequest.forAsset().addResource(with: .photo, fileURL: url, options: nil)
+            }
         }
     }
 }

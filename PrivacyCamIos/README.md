@@ -23,6 +23,17 @@ open PrivacyCam.xcodeproj
 `yolo-v9-t-384-license-plate-end2end` 를 `/model/model.22/Concat_5` 에서 잘라 NMS 를 뺀 뒤 변환했다.
 다시 만들려면 `tools/convert_plate_model.py`. 라이선스는 `PrivacyCam/Models/OPEN_IMAGE_MODELS_MIT_LICENSE.txt`.
 
+## 샘플 사진
+
+`showcase_N_1` 은 Wikimedia Commons 의 CC0 사진이고, `showcase_N_2` 는 이 앱의 검출기·렌더러로 기본 설정 그대로 만든 보호본이다.
+
+| N | 보여 주는 것 | 원본 | 작성자 | 라이선스 |
+|---|---|---|---|---|
+| 1 | 번호판 | [Mercedes C-Class Slovenia plate (50917990426).jpg](https://commons.wikimedia.org/wiki/File:Mercedes_C-Class_Slovenia_plate_(50917990426).jpg) | crash71100 | CC0 |
+| 2 | QR 코드 | [QR code signs (52900681507).jpg](https://commons.wikimedia.org/wiki/File:QR_code_signs_(52900681507).jpg) | Khronos-dolls from Hakata-ku Fukuoka-shi | CC0 |
+| 3 | 개인정보 텍스트 (가운데 열만 잘라 씀) | [Digital Business Card Example.png](https://commons.wikimedia.org/wiki/File:Digital_Business_Card_Example.png) | DoubleCritch | CC0 |
+| 4 | 얼굴 | [Three friends by train tracks (Unsplash).jpg](https://commons.wikimedia.org/wiki/File:Three_friends_by_train_tracks_(Unsplash).jpg) | Priscilla Du Preez artographybyp | CC0 |
+
 ## 시뮬레이터 제약
 
 - Core ML·Vision 신경망 요청은 시뮬레이터에서 CPU 로 강제한다 (GPU 경로가 0 을 내거나 실패).

@@ -61,6 +61,25 @@ struct PlateDecodeTests {
         CGImageDestinationFinalize(dest)
         #expect(Renderer.hasIdentifyingMetadata(dirty as Data))
     }
+
+    /// GPS 가 든 사진 여러 장을 내보내면 장마다 파일이 생기고 어느 것에도 메타데이터가 없다.
+    @Test func exportAllStripsEveryPage() throws {
+        let image = try #require(CGContext(data: nil, width: 32, height: 32, bitsPerComponent: 8, bytesPerRow: 0,
+                                           space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)?.makeImage())
+        let tagged = NSMutableData()
+        let dest = try #require(CGImageDestinationCreateWithData(tagged, "public.jpeg" as CFString, 1, nil))
+        CGImageDestinationAddImage(dest, image, [kCGImagePropertyGPSDictionary: [kCGImagePropertyGPSLatitude: 37.5, kCGImagePropertyGPSLatitudeRef: "N"]] as CFDictionary)
+        CGImageDestinationFinalize(dest)
+        #expect(Renderer.hasIdentifyingMetadata(tagged as Data))
+
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let box = RedactionItem(.manual, CGRect(x: 4, y: 4, width: 10, height: 10))
+        let urls = try Renderer.exportAll([(.data(tagged as Data), [box]), (.image(image), [])], to: dir)
+        #expect(urls.map(\.lastPathComponent) == ["PrivacyCam_safe_1.jpg", "PrivacyCam_safe_2.jpg"])
+        for url in urls { #expect(!Renderer.hasIdentifyingMetadata(try Data(contentsOf: url))) }
+    }
 }
 
 struct QRFinderTests {

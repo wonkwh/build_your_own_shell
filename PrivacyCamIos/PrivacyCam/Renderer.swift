@@ -1,4 +1,5 @@
 import CoreImage
+import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
@@ -11,6 +12,18 @@ enum ImageError: LocalizedError {
         case .tooLarge: "이미지가 너무 커서 이 기기에서 안전하게 처리할 수 없습니다."
         case .renderFailed: "보호된 사본을 만들지 못했습니다."
         case .metadataNotRemoved: "메타데이터 제거를 확인하지 못해 내보내기를 중단했습니다."
+        }
+    }
+}
+
+/// 원본 데이터나 샘플 이미지. 데이터는 쓸 때마다 디코드해 여러 장을 메모리에 쌓지 않는다.
+enum PhotoSource: Sendable {
+    case data(Data), image(CGImage)
+
+    func load() throws -> (image: CGImage, isPNG: Bool) {
+        switch self {
+        case .data(let data): try Renderer.load(data)
+        case .image(let image): (image, false)
         }
     }
 }
@@ -74,6 +87,28 @@ enum Renderer {
         default: 4
         }
         return max(pixelSize, minimum)
+    }
+
+    /// 한 장씩 디코드·렌더·인코드해 `dir` 에 쓴다. 메모리에는 한 번에 한 장만 올라간다.
+    static func exportAll(_ jobs: [(PhotoSource, [RedactionItem])], to dir: URL) throws -> [URL] {
+        try jobs.enumerated().map { i, job in
+            try autoreleasepool {
+                let (image, png) = try job.0.load()
+                let data = try encode(render(image, items: job.1), png: png)
+                let name = jobs.count == 1 ? "PrivacyCam_safe" : "PrivacyCam_safe_\(i + 1)"
+                let url = dir.appendingPathComponent("\(name).\(png ? "png" : "jpg")")
+                try data.write(to: url, options: [.atomic, .completeFileProtection])
+                return url
+            }
+        }
+    }
+
+    static func thumbnail(_ url: URL) -> CGImage? {
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        return CGImageSourceCreateThumbnailAtIndex(src, 0, [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: 1600,
+        ] as CFDictionary)
     }
 
     /// 메타데이터 없이 다시 인코딩하고, 읽어 들여 제거됐는지 검증한다.
