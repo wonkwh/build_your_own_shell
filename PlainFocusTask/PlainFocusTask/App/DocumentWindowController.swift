@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 
 /// 문서 창: 사이드바 + 편집기 + 툴바 검색 필드.
 final class DocumentWindowController: NSWindowController, NSToolbarDelegate, NSSearchFieldDelegate, NSMenuItemValidation {
@@ -26,6 +27,7 @@ final class DocumentWindowController: NSWindowController, NSToolbarDelegate, NSS
         editor.onContentChange = { [weak self] in self?.scheduleSidebarReload() }
         editor.onStateChange = { [weak self] in self?.syncState() }
         editor.onTagClicked = { [weak self] query in self?.applyFilter(query) }
+        NotificationCenter.default.addObserver(self, selector: #selector(pomodoroPresentationChanged), name: PomodoroController.presentationChanged, object: nil)
         reloadSidebar()
     }
 
@@ -115,16 +117,38 @@ final class DocumentWindowController: NSWindowController, NSToolbarDelegate, NSS
     // MARK: 툴바
 
     private static let searchID = NSToolbarItem.Identifier("search")
+    private static let pomodoroID = NSToolbarItem.Identifier("pomodoro")
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.toggleSidebar, .sidebarTrackingSeparator, .flexibleSpace, Self.searchID]
+        var ids: [NSToolbarItem.Identifier] = [.toggleSidebar, .sidebarTrackingSeparator, .flexibleSpace]
+        if PomodoroController.shared.settings.showToolbar { ids.append(Self.pomodoroID) }
+        return ids + [Self.searchID]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        toolbarDefaultItemIdentifiers(toolbar)
+        [.toggleSidebar, .sidebarTrackingSeparator, .flexibleSpace, Self.pomodoroID, Self.searchID]
+    }
+
+    /// 설정에서 툴바 표시를 바꾸면 열린 창에 바로 넣거나 뺀다.
+    @objc private func pomodoroPresentationChanged() {
+        guard let toolbar = window?.toolbar else { return }
+        let index = toolbar.items.firstIndex { $0.itemIdentifier == Self.pomodoroID }
+        let wanted = PomodoroController.shared.settings.showToolbar
+        if wanted, index == nil {
+            let at = toolbar.items.firstIndex { $0.itemIdentifier == Self.searchID } ?? toolbar.items.count
+            toolbar.insertItem(withItemIdentifier: Self.pomodoroID, at: at)
+        } else if !wanted, let index {
+            toolbar.removeItem(at: index)
+        }
     }
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier id: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+        if id == Self.pomodoroID {
+            let item = NSToolbarItem(itemIdentifier: id)
+            item.label = "뽀모도로"
+            item.view = NSHostingView(rootView: PomodoroToolbarButton())
+            return item
+        }
         guard id == Self.searchID else { return nil }
         let item = NSSearchToolbarItem(itemIdentifier: id)
         item.searchField.placeholderString = "검색 (예: @today, project Work//not @done)"

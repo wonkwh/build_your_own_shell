@@ -147,6 +147,7 @@ enum MainMenu {
             item("시작일 @start", "toggleStart:"),
             item("오늘 @today", "toggleToday:", "y"),
             item("완료 @done", "toggleDone:", "d"), sep,
+            item("예상 뽀모도로…", "setPomodoroEstimate:"),
             item("태그 지우기", "clearTags:", "k", [.command, .control, .option]),
             item("@done 항목 보관", "archiveDone:", "A"),
         ]))
@@ -177,6 +178,16 @@ enum MainMenu {
             item("실제 크기", "zoomToActualSize:"),
             item("확대", "zoomIn:", "+"),
             item("축소", "zoomOut:", "-"),
+        ]))
+
+        main.addItem(menu("뽀모도로", [
+            item("집중 시작", "pomodoroToggle:", "t", [.command, .option]),
+            item("정지", "pomodoroStop:"),
+            item("휴식 건너뛰기", "pomodoroSkipBreak:"), sep,
+            item("미니 창 보기", "pomodoroShowMini:"),
+            item("전체 화면 타이머", "pomodoroFullScreen:"),
+            item("통계 보고서…", "pomodoroStats:"), sep,
+            item("뽀모도로 설정…", "showPomodoroSettings:"),
         ]))
 
         main.addItem(menu("팔레트", [

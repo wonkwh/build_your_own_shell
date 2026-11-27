@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// 앱 시작, 메뉴, 설정 창, 안내 문서.
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     private var settingsWindow: NSWindow?
     private var defaultsObserver: NSObjectProtocol?
     private var showsWelcome = false
@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 for case let doc as OutlineDocument in NSDocumentController.shared.documents { doc.editor.restyleAll() }
             }
         }
+        PomodoroController.shared.applyPresentation()
         if showsWelcome {
             UserDefaults.standard.set(true, forKey: "welcomeShown")
             openWelcome(nil)
@@ -40,6 +41,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func openUsersGuide(_ sender: Any?) {
         NSWorkspace.shared.open(URL(string: "https://www.taskpaper.com/guide/")!)
+    }
+
+    // MARK: 뽀모도로
+
+    private var pomodoro: PomodoroController { .shared }
+    @objc func pomodoroToggle(_ sender: Any?) { pomodoro.toggle() }
+    @objc func pomodoroStop(_ sender: Any?) { pomodoro.stop() }
+    @objc func pomodoroSkipBreak(_ sender: Any?) { pomodoro.skipBreak() }
+    @objc func pomodoroShowMini(_ sender: Any?) {
+        pomodoro.update { $0.showMiniWindow = true }
+        pomodoro.presenters.showMini()
+    }
+    @objc func pomodoroFullScreen(_ sender: Any?) { pomodoro.presenters.toggleFullScreen() }
+    @objc func pomodoroStats(_ sender: Any?) { pomodoro.presenters.showStats() }
+    @objc func showPomodoroSettings(_ sender: Any?) {
+        UserDefaults.standard.set("pomodoro", forKey: "settingsTab")
+        showPreferences(sender)
+    }
+
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        let t = pomodoro.timer
+        switch item.action {
+        case #selector(pomodoroToggle(_:)):
+            item.title = t.isRunning ? "일시정지" : t.started ? "계속" : t.phase.isBreak ? "휴식 시작" : "집중 시작"
+        case #selector(pomodoroStop(_:)): return t.started
+        case #selector(pomodoroSkipBreak(_:)): return t.phase.isBreak
+        default: break
+        }
+        return true
     }
 
     @objc func showPreferences(_ sender: Any?) {

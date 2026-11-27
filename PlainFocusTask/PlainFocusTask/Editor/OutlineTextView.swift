@@ -400,6 +400,19 @@ final class OutlineTextView: NSTextView {
     @objc func toggleStart(_ sender: Any?) { toggleDateTag("start", title: "시작일") }
     @objc func clearTags(_ sender: Any?) { editor.perform { $0.clearTags() } }
 
+    /// 예상 뽀모도로 수(@estimate)를 1–10 중에서 고른다.
+    @objc func setPomodoroEstimate(_ sender: Any?) {
+        guard let window else { return }
+        let choices = (1...10).map { n in
+            PaletteChoice(title: "🍅 \(n)", detail: "@estimate(\(n))") { [weak self] in
+                self?.editor.perform { $0.setTag("estimate", value: String(n), remove: false) }
+            }
+        } + [PaletteChoice(title: "예상 지우기", symbol: "xmark") { [weak self] in
+            self?.editor.perform { $0.setTag("estimate", value: nil, remove: true) }
+        }]
+        ChoicePalette.show(over: window, placeholder: "예상 뽀모도로", choices: choices)
+    }
+
     @objc func archiveDone(_ sender: Any?) {
         editor.perform { $0.archiveDone(addProjectTag: Preferences.archiveAddsProject, removeExtraTags: Preferences.archiveRemovesTags) }
     }

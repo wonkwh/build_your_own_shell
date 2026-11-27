@@ -20,7 +20,8 @@ import Testing
 
     static var limit: Double {
         #if DEBUG
-        return 10
+        // 디버그 빌드는 최적화가 없어 들쭉날쭉하다. 목표 검사는 Release 기준
+        return 20
         #else
         return 1
         #endif

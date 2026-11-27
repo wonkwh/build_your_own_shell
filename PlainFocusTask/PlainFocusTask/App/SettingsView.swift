@@ -2,6 +2,19 @@ import SwiftUI
 
 /// 설정 창. 값은 `UserDefaults`에 저장되고 열린 문서에 바로 반영된다.
 struct SettingsView: View {
+    @AppStorage("settingsTab") private var tab = "general"
+
+    var body: some View {
+        TabView(selection: $tab) {
+            GeneralSettingsView().tabItem { Label("일반", systemImage: "gearshape") }.tag("general")
+            PomodoroSettingsView().tabItem { Label("뽀모도로", systemImage: "timer") }.tag("pomodoro")
+        }
+        .frame(width: 460, height: 560)
+    }
+}
+
+/// 설정 > 일반 탭
+struct GeneralSettingsView: View {
     @AppStorage("fontFamily") private var fontFamily = ""
     @AppStorage("fontSize") private var fontSize = 14.0
     @AppStorage("lineHeight") private var lineHeight = 1.25
@@ -31,8 +44,6 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420)
-        .fixedSize()
     }
 
     private func open(_ url: URL) {

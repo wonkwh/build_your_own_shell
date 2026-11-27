@@ -159,8 +159,13 @@ final class OutlineEditor: NSObject {
         tv.didChangeText()
         recomputeHidden(invalidate: true)
         if keepSelection {
+            // 바뀐 구간 뒤의 커서만 밀고, 구간 안의 커서는 그 자리(새 구간 끝을 넘지 않게)에 둔다
             let delta = (edit.text as NSString).length - edit.range.length
-            tv.setSelectedRange(old.location > edit.range.location ? NSRange(location: max(old.location + delta, 0), length: old.length) : old)
+            let location: Int
+            if old.location >= NSMaxRange(edit.range) { location = old.location + delta }
+            else if old.location > edit.range.location { location = min(old.location, edit.range.location + (edit.text as NSString).length) }
+            else { location = old.location }
+            tv.setSelectedRange(NSRange(location: max(location, 0), length: old.length))
         } else {
             tv.setSelectedRange(edit.selection)
             tv.scrollRangeToVisible(edit.selection)
@@ -179,6 +184,17 @@ final class OutlineEditor: NSObject {
             if let edit = snap.toggleTag("done", value: value) { apply(edit, keepSelection: true) }
         } else {
             perform { $0.toggleTag("done", value: value) }
+        }
+    }
+
+    /// 줄 id로 찾은 줄의 정수 태그를 1 늘린다. 커서는 그대로 둔다.
+    func incrementTag(_ name: String, lineID: Int) {
+        guard let i = line(withID: lineID) else { return }
+        let snap = snapshot()
+        var new = snap.allLines()
+        new[i].text = LineText.incrementTag(new[i].text, name)
+        if let edit = snap.makeEdit(new, select: snap.selectionSpec.start) {
+            if editorView != nil { apply(edit, keepSelection: true) }
         }
     }
 
