@@ -1,6 +1,8 @@
 import CoreGraphics
 import CoreImage
 import Foundation
+import AVFoundation
+import CoreVideo
 import ImageIO
 import PDFKit
 import StoreKitTest
@@ -168,5 +170,94 @@ struct PDFTests {
         #expect(doc.pageCount == 2)
         #expect((doc.string ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         #expect(doc.page(at: 0)?.bounds(for: .cropBox).size == page.size)
+    }
+}
+
+struct VideoTests {
+    @Test func trackInterpolatesAndHolds() throws {
+        var track = VideoTrack(.face, first: Keyframe(t: 1, rect: CGRect(x: 0.1, y: 0.1, width: 0.1, height: 0.1)))
+        track.keyframes.append(Keyframe(t: 2, rect: CGRect(x: 0.3, y: 0.1, width: 0.1, height: 0.1)))
+        let mid = try #require(track.rect(at: 1.5))
+        #expect(abs(mid.midX - 0.25) < 0.001)
+        #expect(track.rect(at: 0.7) != nil)   // 첫 검출 전에도 잠시 가린다
+        #expect(track.rect(at: 0.3) == nil)
+        #expect(track.rect(at: 2.4) != nil)
+        #expect(track.rect(at: 3) == nil)
+    }
+
+    @Test func linksMovingFaceIntoOneTrack() {
+        let face = { (x: CGFloat) in (category: RedactionCategory.face, rect: CGRect(x: x, y: 0.2, width: 0.1, height: 0.1)) }
+        let samples: [VideoSupport.Sample] = [
+            .init(t: 0, items: [face(0.1), (.numberPlate, CGRect(x: 0.7, y: 0.7, width: 0.1, height: 0.05))]),
+            .init(t: 0.3, items: [face(0.13)]),
+            .init(t: 0.6, items: [face(0.16)]),
+            .init(t: 3, items: [face(0.16)]),   // 오래 끊겼으니 새 트랙
+        ]
+        let tracks = VideoSupport.buildTracks(samples)
+        #expect(tracks.filter { $0.category == .face }.map(\.keyframes.count) == [3, 1])
+        #expect(tracks.filter { $0.category == .numberPlate }.count == 1)
+    }
+
+    /// 위치 정보가 든 흰 동영상의 왼쪽 절반을 가리면, 결과는 왼쪽만 검고 위치 정보가 없어야 한다.
+    @Test func exportCoversTrackAndDropsLocation() async throws {
+        let dir = FileManager.default.temporaryDirectory
+        let src = dir.appendingPathComponent("video_src.mov")
+        try await Self.makeWhiteVideo(src)
+        defer { try? FileManager.default.removeItem(at: src) }
+        #expect(try await VideoSupport.hasIdentifyingMetadata(src))
+
+        var track = VideoTrack(.manual, first: Keyframe(t: 0, rect: CGRect(x: 0, y: 0, width: 0.4, height: 1)))
+        track.keyframes.append(Keyframe(t: 1, rect: CGRect(x: 0, y: 0, width: 0.4, height: 1)))
+        track.selected = true
+        track.style = .blackout
+        let out = try await VideoSupport.export(src, tracks: [track], muteAudio: true, to: dir)
+        defer { try? FileManager.default.removeItem(at: out) }
+        #expect(try await !VideoSupport.hasIdentifyingMetadata(out))
+
+        let generator = AVAssetImageGenerator(asset: AVURLAsset(url: out))
+        let frame = try await generator.image(at: CMTime(seconds: 0.5, preferredTimescale: 600)).image
+        #expect(Self.brightness(frame, x: 0.1, y: 0.5) < 40)
+        #expect(Self.brightness(frame, x: 0.9, y: 0.5) > 200)
+    }
+
+    static func makeWhiteVideo(_ url: URL) async throws {
+        try? FileManager.default.removeItem(at: url)
+        let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
+        let location = AVMutableMetadataItem()
+        location.identifier = .quickTimeMetadataLocationISO6709
+        location.value = "+37.5665+126.9780/" as NSString
+        writer.metadata = [location]
+        let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
+            AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: 320, AVVideoHeightKey: 240,
+        ])
+        let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input, sourcePixelBufferAttributes: [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA, kCVPixelBufferWidthKey as String: 320, kCVPixelBufferHeightKey as String: 240,
+        ])
+        writer.add(input)
+        writer.startWriting()
+        writer.startSession(atSourceTime: .zero)
+        for i in 0..<10 {
+            while !input.isReadyForMoreMediaData { try await Task.sleep(for: .milliseconds(5)) }
+            var buffer: CVPixelBuffer?
+            CVPixelBufferCreate(nil, 320, 240, kCVPixelFormatType_32BGRA, nil, &buffer)
+            let pb = try #require(buffer)
+            CVPixelBufferLockBaseAddress(pb, [])
+            memset(CVPixelBufferGetBaseAddress(pb), 255, CVPixelBufferGetDataSize(pb))
+            CVPixelBufferUnlockBaseAddress(pb, [])
+            adaptor.append(pb, withPresentationTime: CMTime(value: CMTimeValue(i), timescale: 10))
+        }
+        input.markAsFinished()
+        await writer.finishWriting()
+        #expect(writer.status == .completed)
+    }
+
+    /// 0...1 좌표(좌상단 원점) 한 점의 밝기 0...255.
+    static func brightness(_ image: CGImage, x: CGFloat, y: CGFloat) -> Int {
+        var pixel = [UInt8](repeating: 0, count: 4)
+        let ctx = CGContext(data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+        ctx.draw(image, in: CGRect(x: -x * CGFloat(image.width), y: -(1 - y) * CGFloat(image.height),
+                                   width: CGFloat(image.width), height: CGFloat(image.height)))
+        return (Int(pixel[0]) + Int(pixel[1]) + Int(pixel[2])) / 3
     }
 }

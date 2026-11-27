@@ -150,10 +150,12 @@ struct BeforeAfterComparison: View {
     }
 }
 
-/// 쇼케이스 원본(`showcase_N_1`)이나 샘플 PDF 를 골라 바로 검사해 볼 수 있는 시트.
+/// 쇼케이스 원본(`showcase_N_1`)이나 샘플 PDF·동영상을 골라 바로 검사해 볼 수 있는 시트.
 struct SamplePicker: View {
     static let pdfName = "MaskShare_Sample.pdf"
+    static let videoName = "MaskShare_Sample.mp4"
     let onPick: (String) -> Void
+    @State private var videoThumbnail: UIImage?
 
     var body: some View {
         NavigationStack {
@@ -174,16 +176,18 @@ struct SamplePicker: View {
                             .aspectRatio(3 / 4, contentMode: .fit)
                             .overlay(alignment: .top) { pdfThumbnail?.resizable().scaledToFit() }
                             .overlay(alignment: .bottomLeading) {
-                                Label("PDF 2쪽", systemImage: "doc.text")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 8).padding(.vertical, 5)
-                                    .background(Theme.accent, in: Capsule())
-                                    .padding(8)
-                            }
+badge("PDF 2쪽", "doc.text") }
                             .clipShape(RoundedRectangle(cornerRadius: 16))
                     }
                     .accessibilityLabel("샘플 PDF")
+                    Button { onPick(Self.videoName) } label: {
+                        Color.black
+                            .aspectRatio(3 / 4, contentMode: .fit)
+                            .overlay { videoThumbnail.map { Image(uiImage: $0).resizable().scaledToFill() } }
+                            .overlay(alignment: .bottomLeading) { badge("동영상 12초", "video") }
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+                    .accessibilityLabel("샘플 동영상")
                 }
                 .padding()
             }
@@ -192,6 +196,19 @@ struct SamplePicker: View {
         }
         .presentationDetents([.medium, .large])
         .presentationBackground(Theme.background)
+        .task {
+            guard let url = Bundle.main.url(forResource: Self.videoName, withExtension: nil) else { return }
+            videoThumbnail = await VideoSupport.thumbnail(url).map(UIImage.init)
+        }
+    }
+
+    private func badge(_ title: String, _ icon: String) -> some View {
+        Label(title, systemImage: icon)
+            .font(.caption.weight(.bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 8).padding(.vertical, 5)
+            .background(Theme.accent, in: Capsule())
+            .padding(8)
     }
 
     private var pdfThumbnail: Image? {

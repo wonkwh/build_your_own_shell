@@ -45,8 +45,15 @@ enum RedactionStyle: String, CaseIterable, Sendable {
     }
 }
 
+/// 카테고리별로 켜고 끄고 스타일을 바꿀 수 있는 가림 대상. 사진 상자와 동영상 트랙이 따른다.
+protocol Maskable {
+    var category: RedactionCategory { get }
+    var selected: Bool { get set }
+    var style: RedactionStyle { get set }
+}
+
 /// `bounds` 는 이미지 픽셀 좌표(좌상단 원점).
-struct RedactionItem: Identifiable, Equatable, Sendable {
+struct RedactionItem: Identifiable, Equatable, Sendable, Maskable {
     let id = UUID()
     let category: RedactionCategory
     var bounds: CGRect

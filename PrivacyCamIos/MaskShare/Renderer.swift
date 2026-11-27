@@ -53,11 +53,18 @@ enum Renderer {
 
     static func render(_ image: CGImage, items: [RedactionItem]) throws -> CGImage {
         let source = CIImage(cgImage: image)
+        guard let cg = context.createCGImage(apply(source, items: items), from: source.extent) else { throw ImageError.renderFailed }
+        return cg
+    }
+
+    /// `items` 의 좌상단 원점 픽셀 좌표를 `source` 범위에 맞춰 가린다. 동영상 프레임에도 쓴다.
+    static func apply(_ source: CIImage, items: [RedactionItem]) -> CIImage {
+        let extent = source.extent
         var out = source
         for item in items where item.selected {
             // Core Image 는 좌하단 원점.
-            let r = CGRect(x: item.bounds.minX, y: CGFloat(image.height) - item.bounds.maxY,
-                           width: item.bounds.width, height: item.bounds.height).integral.intersection(source.extent)
+            let r = CGRect(x: extent.minX + item.bounds.minX, y: extent.maxY - item.bounds.maxY,
+                           width: item.bounds.width, height: item.bounds.height).integral.intersection(extent)
             guard !r.isNull, r.width >= 1, r.height >= 1 else { continue }
             let region = out.cropped(to: r).clampedToExtent()
             let patch: CIImage = switch item.style {
@@ -74,8 +81,7 @@ enum Renderer {
             }
             out = patch.cropped(to: r).composited(over: out)
         }
-        guard let cg = context.createCGImage(out, from: source.extent) else { throw ImageError.renderFailed }
-        return cg
+        return out
     }
 
     /// QR 모듈·번호판 글자가 작은 블록을 견디므로 카테고리별 최소 블록을 강제한다.

@@ -60,6 +60,7 @@ struct HomeView: View {
     @State private var error: String?
     @State private var showPaywall = false
     @State private var showPDFPicker = false
+    @State private var video: VideoSession?
     @Environment(\.colorScheme) private var scheme
     @Environment(Store.self) private var store
 
@@ -74,7 +75,7 @@ struct HomeView: View {
                 Text("공유하기 전에,\n기기 안에서 가립니다")
                     .font(.title.weight(.heavy))
                     .padding(.top, 18)
-                Text("사진을 고르면 가릴 곳을 알아서 찾아 둡니다.")
+                Text("사진·동영상·PDF 를 고르면 가릴 곳을 알아서 찾아 둡니다.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .padding(.top, 6)
@@ -99,6 +100,17 @@ struct HomeView: View {
         .onChange(of: pickerItems) { _, items in
             guard !items.isEmpty else { return }
             pickerItems = []
+            if items.contains(where: { $0.supportedContentTypes.contains { $0.conforms(to: .movie) } }) {
+                guard items.count == 1 else { error = "동영상은 한 개씩만 처리할 수 있습니다."; return }
+                let item = items[0]
+                Task {
+                    await openVideo {
+                        guard let movie = try await item.loadTransferable(type: PickedMovie.self) else { throw VideoError.unreadable }
+                        return movie.url
+                    }
+                }
+                return
+            }
             Task {
                 var sources: [PhotoSource] = []
                 for item in items {
@@ -120,6 +132,15 @@ struct HomeView: View {
         .sheet(isPresented: $showSamples, onDismiss: {
             if sample == SamplePicker.pdfName {
                 if let url = Bundle.main.url(forResource: SamplePicker.pdfName, withExtension: nil) { openPDF(.success(url)) }
+            } else if sample == SamplePicker.videoName, let source = Bundle.main.url(forResource: SamplePicker.videoName, withExtension: nil) {
+                // 편집기가 닫힐 때 원본을 지우므로 번들 파일은 복사해서 넘긴다
+                Task {
+                    await openVideo {
+                        let url = URL.temporaryDirectory.appending(path: "\(UUID().uuidString).mp4")
+                        try FileManager.default.copyItem(at: source, to: url)
+                        return url
+                    }
+                }
             } else if let name = sample, let image = UIImage(named: name)?.cgImage {
                 batch = Batch([.image(image)])
             }
@@ -128,6 +149,7 @@ struct HomeView: View {
             SamplePicker { sample = $0; showSamples = false }
         }
         .fullScreenCover(item: $batch) { EditorView(batch: $0) }
+        .fullScreenCover(item: $video) { VideoEditorView(session: $0) }
         .sheet(isPresented: $showPaywall) { ProPaywall() }
         .fileImporter(isPresented: $showPDFPicker, allowedContentTypes: [.pdf]) { openPDF($0) }
         .alert("열 수 없음", isPresented: .constant(error != nil)) {
@@ -152,14 +174,33 @@ struct HomeView: View {
         }
     }
 
+    /// 무료는 `VideoSupport.freeSeconds` 초까지. 넘으면 결제 화면을 띄운다.
+    /// - Parameter load: 편집기가 닫힐 때 지워도 되는 임시 파일 URL 을 돌려준다.
+    private func openVideo(_ load: () async throws -> URL) async {
+        do {
+            let url = try await load()
+            let (duration, size) = try await VideoSupport.inspect(url)
+            let limit = store.isPro ? VideoSupport.maxSeconds : VideoSupport.freeSeconds
+            guard duration <= limit + 0.5 else {
+                try? FileManager.default.removeItem(at: url)
+                if store.isPro { error = VideoError.tooLong.localizedDescription } else { showPaywall = true }
+                return
+            }
+            video = VideoSession(url: url, size: size)
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
     private var actions: some View {
         VStack(spacing: 10) {
             // ponytail: 원본 Data 를 메모리에 다 들고 있으므로 10장 상한. 더 필요하면 파일 URL 로 받는다.
             // 무료는 한 장씩, Pro 는 여러 장
-            PhotosPicker(selection: $pickerItems, maxSelectionCount: store.isPro ? 10 : 1, selectionBehavior: .ordered, matching: .images) {
+            PhotosPicker(selection: $pickerItems, maxSelectionCount: store.isPro ? 10 : 1, selectionBehavior: .ordered,
+                         matching: .any(of: [.images, .videos])) {
                 HStack(spacing: 8) {
                     Image(systemName: "photo.on.rectangle")
-                    Text("사진 선택")
+                    Text("사진·동영상 선택")
                     if store.isPro { Text("최대 10장").font(.subheadline).opacity(0.6) }
                 }
             }
@@ -173,7 +214,7 @@ struct HomeView: View {
             }
             .buttonStyle(.pill(.secondary))
             if !store.isPro {
-                Button("여러 장 사진과 3쪽 이상 PDF 는 Pro") { showPaywall = true }
+                Button("여러 장 사진, 긴 동영상·PDF 는 Pro") { showPaywall = true }
                     .font(.footnote.weight(.semibold))
             }
             Label("사진은 기기 밖으로 나가지 않습니다", systemImage: "lock.fill")

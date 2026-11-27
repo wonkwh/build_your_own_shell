@@ -43,10 +43,16 @@ open MaskShare.xcodeproj
 
 쪽마다 이미지로 그려 같은 검출기로 검사하고, 가린 이미지만으로 새 PDF 를 만든다. 원본의 텍스트 층·링크·메타데이터는 옮기지 않으며, 내보낸 파일에 선택 가능한 텍스트가 남으면 내보내기를 멈춘다. 암호가 걸린 PDF 는 받지 않는다.
 
+## 동영상
+
+0.3초마다 프레임을 검사해(텍스트는 3초마다) 같은 대상을 트랙으로 잇고, 검출 사이는 위치를 보간한다. 내보낼 때는 모든 프레임에 사진과 같은 렌더러로 가리고, 새 컴포지션으로 다시 써서 위치·기기 정보를 남기지 않는다.
+
 ## 인앱 결제
 
-무료는 사진 한 장씩과 2쪽까지의 PDF, Pro(비소모성 `com.wonkwh.maskshare.pro`, $1.99) 는 사진 최대 10장과 PDF 50쪽까지 처리한다.
+무료는 사진 한 장씩, 2쪽까지의 PDF, 15초까지의 동영상, Pro(비소모성 `com.wonkwh.maskshare.pro`, $1.99) 는 사진 최대 10장, PDF 50쪽, 동영상 60초까지 처리한다.
 App Store Connect 에 같은 ID 로 상품을 만들어야 실기기에서 보인다. 로컬 테스트는 `MaskShare.storekit` (Xcode Run, `StoreTests`).
+
+`MaskShare/Samples/MaskShare_Sample.mp4` 는 Mixkit 의 [Pedestrian walk in Tokyo](https://mixkit.co/free-stock-video/pedestrian-walk-in-tokyo-4231/) (Mixkit Stock Video Free License) 를 4~16초 구간만 잘라 720p·무음으로 다시 인코딩했다.
 
 `MaskShare/Samples/MaskShare_Sample.pdf` 는 가상의 이름·연락처·카드(테스트 번호)로 만든 2쪽 문서이고, 2쪽 사진은 위 4번이다. 다시 만들려면 `tools/make_sample_pdf.swift`.
 

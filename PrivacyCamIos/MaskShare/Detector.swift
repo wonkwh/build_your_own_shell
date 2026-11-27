@@ -4,9 +4,10 @@ import Vision
 
 /// 온디바이스 검출. 얼굴·사람·텍스트·바코드는 Vision, 번호판은 변환한 Core ML 모델.
 enum Detector {
-    static func detect(_ image: CGImage) async -> [RedactionItem] {
+    /// - Parameter includeText: false 면 가장 무거운 텍스트 인식을 건너뛴다. 동영상 프레임은 몇 초에 한 번만 켠다.
+    static func detect(_ image: CGImage, includeText: Bool = true) async -> [RedactionItem] {
         let size = CGSize(width: image.width, height: image.height)
-        async let vision = visionItems(image, size: size)
+        async let vision = visionItems(image, size: size, includeText: includeText)
         async let plates = (try? PlateDetector.detect(image)) ?? []
         async let finderQRs = QRFinder.detect(image)
         var items = await vision + plates
@@ -20,7 +21,7 @@ enum Detector {
 
     // MARK: Vision
 
-    private static func visionItems(_ image: CGImage, size: CGSize) -> [RedactionItem] {
+    private static func visionItems(_ image: CGImage, size: CGSize, includeText: Bool) -> [RedactionItem] {
         let faces = VNDetectFaceRectanglesRequest()
         let humans = VNDetectHumanRectanglesRequest()
         humans.upperBodyOnly = false
@@ -32,7 +33,7 @@ enum Detector {
 
         // 한 요청이 실패해도 나머지는 돌도록 따로 실행한다. 실패한 요청은 results 가 nil.
         let handler = VNImageRequestHandler(cgImage: image)
-        for request in [faces, humans, text, codes] as [VNRequest] {
+        for request in (includeText ? [faces, humans, text, codes] : [faces, humans, codes]) as [VNRequest] {
             #if targetEnvironment(simulator)
             // 시뮬레이터는 Vision 신경망 요청이 "Could not create inference context" 로 실패한다.
             if let cpu = MLComputeDevice.allComputeDevices.first(where: { if case .cpu = $0 { true } else { false } }) {

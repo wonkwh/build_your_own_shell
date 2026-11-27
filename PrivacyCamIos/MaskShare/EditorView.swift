@@ -133,7 +133,7 @@ struct EditorView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
                     ForEach(presentCategories, id: \.self) { category in
-                        categoryMenu(category)
+                        CategoryMenu(items: Bindable(session).items, category: category)
                     }
                 }
                 .padding(.horizontal)
@@ -158,27 +158,6 @@ struct EditorView: View {
 
     private var presentCategories: [RedactionCategory] {
         RedactionCategory.allCases.filter { c in session.items.contains { $0.category == c } }
-    }
-
-    private func categoryMenu(_ category: RedactionCategory) -> some View {
-        let indices = session.items.indices.filter { session.items[$0].category == category }
-        let on = indices.filter { session.items[$0].selected }.count
-        return Menu {
-            Toggle("가리기", isOn: Binding(
-                get: { on == indices.count },
-                set: { v in indices.forEach { session.items[$0].selected = v } }))
-            Picker("스타일", selection: Binding(
-                get: { session.items[indices[0]].style },
-                set: { s in indices.forEach { session.items[$0].style = s } })) {
-                ForEach(RedactionStyle.allCases, id: \.self) { Text($0.label) }
-            }
-        } label: {
-            Text("\(category.label) \(on)/\(indices.count)")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(on > 0 ? Theme.accent : .secondary)
-                .padding(.horizontal, 12).padding(.vertical, 7)
-                .background(on > 0 ? Theme.accent.opacity(0.12) : Theme.fill, in: Capsule())
-        }
     }
 
     // MARK: 툴바
@@ -233,6 +212,33 @@ struct EditorView: View {
             exported = Exported(urls: urls, preview: thumb)
         } catch {
             self.error = error.localizedDescription
+        }
+    }
+}
+
+/// 한 카테고리의 대상을 한꺼번에 켜고 끄거나 스타일을 바꾸는 칩.
+struct CategoryMenu<Item: Maskable>: View {
+    @Binding var items: [Item]
+    let category: RedactionCategory
+
+    var body: some View {
+        let indices = items.indices.filter { items[$0].category == category }
+        let on = indices.filter { items[$0].selected }.count
+        Menu {
+            Toggle("가리기", isOn: Binding(
+                get: { on == indices.count },
+                set: { v in indices.forEach { items[$0].selected = v } }))
+            Picker("스타일", selection: Binding(
+                get: { items[indices[0]].style },
+                set: { s in indices.forEach { items[$0].style = s } })) {
+                ForEach(RedactionStyle.allCases, id: \.self) { Text($0.label) }
+            }
+        } label: {
+            Text("\(category.label) \(on)/\(indices.count)")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(on > 0 ? Theme.accent : .secondary)
+                .padding(.horizontal, 12).padding(.vertical, 7)
+                .background(on > 0 ? Theme.accent.opacity(0.12) : Theme.fill, in: Capsule())
         }
     }
 }
@@ -304,7 +310,8 @@ struct ExportSheet: View {
     nonisolated private static func addToPhotos(_ urls: [URL]) async throws {
         try await PHPhotoLibrary.shared().performChanges {
             for url in urls {
-                PHAssetCreationRequest.forAsset().addResource(with: .photo, fileURL: url, options: nil)
+                let type: PHAssetResourceType = url.pathExtension == "mp4" ? .video : .photo
+                PHAssetCreationRequest.forAsset().addResource(with: type, fileURL: url, options: nil)
             }
         }
     }
