@@ -117,12 +117,11 @@ final class LineIndex {
 
     /// 줄 범위의 접힘 상태와 id를 다른 줄에서 가져온다. 명령이 줄을 옮긴 뒤 쓴다.
     func carry(startingAt first: Int, from sources: [Line?]) {
-        let carried = Set(sources.compactMap { $0?.id }.filter { $0 >= 0 })
         for (k, source) in sources.enumerated() where first + k < lines.count {
             if let source, source.id >= 0 {
                 lines[first + k].id = source.id
-            } else if carried.contains(lines[first + k].id) {
-                // 이어받은 id와 겹치면 새 id를 준다
+            } else {
+                // 새 줄·복제 줄은 근처 줄(숨은 줄일 수도 있다)의 id를 물려받지 않게 새 id를 준다
                 nextID += 1
                 lines[first + k].id = nextID
             }

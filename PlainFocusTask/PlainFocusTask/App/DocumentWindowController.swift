@@ -25,7 +25,7 @@ final class DocumentWindowController: NSWindowController, NSToolbarDelegate, NSS
         setUpToolbar()
         editor.onContentChange = { [weak self] in self?.scheduleSidebarReload() }
         editor.onStateChange = { [weak self] in self?.syncState() }
-        editor.onTagClicked = { [weak self] tag in self?.applyFilter("@" + tag) }
+        editor.onTagClicked = { [weak self] query in self?.applyFilter(query) }
         reloadSidebar()
     }
 
@@ -56,7 +56,7 @@ final class DocumentWindowController: NSWindowController, NSToolbarDelegate, NSS
     }
 
     private func setUpSplit() {
-        let scroll = NSScrollView()
+        let scroll = OutlineScrollView()
         scroll.hasVerticalScroller = true
         scroll.documentView = textView
         scroll.drawsBackground = true
@@ -69,6 +69,20 @@ final class DocumentWindowController: NSWindowController, NSToolbarDelegate, NSS
         split.addSplitViewItem(NSSplitViewItem(viewController: content))
         split.splitView.autosaveName = "PlainFocusTaskSplit"
         sidebar.onSelect = { [weak self] item in self?.select(item) }
+        sidebar.editorView = textView
+        sidebar.onDoubleClick = { [weak self] item in
+            guard let self, item.kind == .project, let id = item.lineID, let line = self.editor.line(withID: id) else { return }
+            self.editor.hoist(line: line)
+        }
+        sidebar.menuItems = { [weak self] item in self?.sidebarMenu(for: item) ?? [] }
+        sidebar.onMoveProject = { [weak self] id, parent, index in self?.moveProject(id, parent: parent, index: index) ?? false }
+        sidebar.onDropSelection = { [weak self] target in
+            guard let self else { return false }
+            if target.kind == .home { self.editor.perform { $0.moveToProject(nil) }; return true }
+            guard let id = target.lineID, let line = self.editor.line(withID: id) else { return false }
+            self.editor.perform { $0.moveToProject(line) }
+            return true
+        }
         window?.contentViewController = split
         window?.setContentSize(NSSize(width: 960, height: 680))
         window?.makeFirstResponder(textView)
@@ -83,6 +97,20 @@ final class DocumentWindowController: NSWindowController, NSToolbarDelegate, NSS
     }
 
     override func windowTitle(forDocumentDisplayName displayName: String) -> String { displayName }
+
+    /// 사이드바·검색 필드에 포커스가 있어도 편집기 메뉴 명령이 동작하게 한다.
+    override func supplementalTarget(forAction action: Selector, sender: Any?) -> Any? {
+        if textView.responds(to: action), !(window?.firstResponder is NSTextView && window?.firstResponder !== textView && Self.textActions.contains(action)) {
+            return textView
+        }
+        return super.supplementalTarget(forAction: action, sender: sender)
+    }
+
+    /// 검색 필드 편집기가 직접 처리해야 하는 일반 텍스트 명령
+    private static let textActions: Set<Selector> = [
+        #selector(NSText.copy(_:)), #selector(NSText.paste(_:)), #selector(NSText.cut(_:)), #selector(NSText.selectAll(_:)),
+        #selector(NSText.delete(_:)), #selector(UndoManager.undo), #selector(UndoManager.redo),
+    ]
 
     // MARK: 툴바
 
@@ -150,6 +178,7 @@ final class DocumentWindowController: NSWindowController, NSToolbarDelegate, NSS
     }
 
     private func syncState() {
+        window?.subtitle = editor.focusPath
         if let field = searchField, field.stringValue != editor.filterQuery, window?.firstResponder !== field.currentEditor() {
             field.stringValue = editor.filterQuery
             field.textColor = .labelColor
@@ -170,13 +199,66 @@ final class DocumentWindowController: NSWindowController, NSToolbarDelegate, NSS
             applyFilter(item.query ?? "")
         case .group: break
         }
-        window?.makeFirstResponder(textView)
+        // 마우스로 고르면 편집기로 바로 입력하게 하고, 화살표로 고르면 사이드바에 포커스를 둔다
+        if let type = NSApp.currentEvent?.type, type == .leftMouseDown || type == .leftMouseUp {
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.window?.makeFirstResponder(self.textView)
+            }
+        }
     }
 
     func applyFilter(_ query: String) {
         searchField?.stringValue = query
         searchField?.textColor = .labelColor
         editor.setFilter(query)
+    }
+
+    private func sidebarMenu(for item: SidebarItem?) -> [NSMenuItem] {
+        func entry(_ title: String, _ action: @escaping () -> Void) -> NSMenuItem {
+            let m = NSMenuItem(title: title, action: #selector(runMenuClosure(_:)), keyEquivalent: "")
+            m.target = self
+            m.representedObject = action
+            return m
+        }
+        switch item?.kind {
+        case .project?:
+            guard let item, let id = item.lineID else { return [] }
+            return [
+                entry("포커스") { [weak self] in self?.select(item) },
+                entry("호이스트") { [weak self] in
+                    guard let self, let line = self.editor.line(withID: id) else { return }
+                    self.editor.hoist(line: line)
+                },
+            ]
+        case .search?:
+            guard let item else { return [] }
+            return [
+                entry("새 검색…") { [weak self] in self?.newSidebarSearch(nil) },
+                entry("검색 편집…") { [weak self] in self?.editSearch(item) },
+                entry("검색 삭제") { [weak self] in self?.deleteSearch(item) },
+            ]
+        default:
+            return [entry("새 검색…") { [weak self] in self?.newSidebarSearch(nil) }]
+        }
+    }
+
+    @objc private func runMenuClosure(_ sender: NSMenuItem) { (sender.representedObject as? () -> Void)?() }
+
+    /// 사이드바에서 끌어놓은 프로젝트를 새 부모의 `index`번째 자리로 옮긴다.
+    private func moveProject(_ id: Int, parent: SidebarItem?, index childIndex: Int) -> Bool {
+        let idx = editor.index
+        guard let source = editor.line(withID: id) else { return false }
+        let p = parent.flatMap { $0.lineID }.flatMap { editor.line(withID: $0) } ?? -1
+        let projects = idx.children(p).filter { idx[$0].type == .project }
+        let before: Int
+        if childIndex < 0 { before = p + 1 } else if childIndex < projects.count { before = projects[childIndex] } else { before = idx.branchEnd(p) }
+        let level = p >= 0 ? idx[p].level + 1 : 0
+        guard var edit = editor.snapshot().moveBranch(source, before: before, level: level) else { return false }
+        if p >= 0 { edit.expandIDs = [idx[p].id] }
+        editor.apply(edit)
+        reloadSidebar()
+        return true
     }
 
     // MARK: 검색 명령
@@ -194,67 +276,104 @@ final class DocumentWindowController: NSWindowController, NSToolbarDelegate, NSS
     }
 
     @objc func newSidebarSearch(_ sender: Any?) {
-        askSearch(name: "", query: editor.filterQuery) { [weak self] name, query in
+        askSearch(name: "", query: editor.filterQuery, global: false) { [weak self] name, query, global in
             guard let self else { return }
-            let text = self.editor.text
-            let index = self.editor.index
-            var new = (0..<index.count).map { NewLine(text: text.substring(with: index[$0].range), source: $0) }
-            let line = "\t\(name) @search(\(LineIndex.escapeTagValue(query)))"
-            if let p = (0..<index.count).first(where: { index[$0].type == .project && index.displayName($0, text).lowercased() == "searches" }) {
-                new.insert(NewLine(text: line, source: nil), at: index[p].branchEnd)
+            if global {
+                GlobalConfig.shared.updateSearch(old: nil, new: .init(name: name, query: query))
             } else {
-                var end = new.count
-                while end > 0, new[end - 1].text.isEmpty { end -= 1 }
-                new.insert(contentsOf: [NewLine(text: "Searches:", source: nil), NewLine(text: line, source: nil)], at: end)
+                self.saveDocumentSearch(replacing: nil, name: name, query: query)
             }
-            let snap = self.editor.snapshot()
-            if let edit = snap.makeEdit(new, select: snap.selectionSpec.start) { self.editor.apply(edit, keepSelection: true) }
             self.reloadSidebar()
         }
     }
 
-    /// 선택한 사이드바 검색이 문서 안 항목이면 그 줄 번호.
-    private var selectedEmbeddedSearch: Int? {
-        guard let item = sidebar.selectedItem, item.kind == .search, let q = item.query else { return nil }
-        return (0..<editor.index.count).first { editor.index[$0].tag("search")?.value == q }
+    /// 문서 안 `Searches:` 프로젝트에 검색을 넣거나 바꾼다.
+    private func saveDocumentSearch(replacing line: Int?, name: String, query: String) {
+        let index = editor.index, text = editor.text
+        var new = (0..<index.count).map { NewLine(text: text.substring(with: index[$0].range), source: $0) }
+        let body = "\(name) @search(\(LineIndex.escapeTagValue(query)))"
+        if let line {
+            new[line].text = index.indentString(line, text) + body
+        } else if let p = (0..<index.count).first(where: { index[$0].type == .project && index.displayName($0, text).lowercased() == "searches" }) {
+            new.insert(NewLine(text: index.indentString(p, text) + "\t" + body, source: nil), at: index[p].branchEnd)
+        } else {
+            var end = new.count
+            while end > 0, new[end - 1].text.isEmpty { end -= 1 }
+            new.insert(contentsOf: [NewLine(text: "Searches:", source: nil), NewLine(text: "\t" + body, source: nil)], at: end)
+        }
+        let snap = editor.snapshot()
+        if let edit = snap.makeEdit(new, select: snap.selectionSpec.start) { editor.apply(edit, keepSelection: true) }
+    }
+
+    private func documentSearchLine(_ query: String) -> Int? {
+        (0..<editor.index.count).first { editor.index[$0].tag("search")?.value == query }
+    }
+
+    private var selectedSearch: SidebarItem? {
+        guard let item = sidebar.selectedItem, item.kind == .search else { return nil }
+        return item
     }
 
     @objc func editSidebarSearch(_ sender: Any?) {
-        guard let i = selectedEmbeddedSearch else { NSSound.beep(); return }
-        let index = editor.index, text = editor.text
-        askSearch(name: index.displayName(i, text), query: index[i].tag("search")?.value ?? "") { [weak self] name, query in
+        guard let item = selectedSearch else { NSSound.beep(); return }
+        editSearch(item)
+    }
+
+    @objc func deleteSidebarSearch(_ sender: Any?) {
+        guard let item = selectedSearch else { NSSound.beep(); return }
+        deleteSearch(item)
+    }
+
+    private func editSearch(_ item: SidebarItem) {
+        guard let old = item.query else { return }
+        askSearch(name: item.title, query: old, global: item.global) { [weak self] name, query, global in
             guard let self else { return }
-            var new = (0..<index.count).map { NewLine(text: text.substring(with: index[$0].range), source: $0) }
-            new[i].text = index.indentString(i, text) + name + " @search(\(LineIndex.escapeTagValue(query)))"
-            let snap = self.editor.snapshot()
-            if let edit = snap.makeEdit(new, select: snap.selectionSpec.start) { self.editor.apply(edit, keepSelection: true) }
+            // 저장 위치가 바뀌면 옛 자리에서 지우고 새 자리에 넣는다
+            if item.global { GlobalConfig.shared.updateSearch(old: old, new: global ? .init(name: name, query: query) : nil) }
+            else if let line = self.documentSearchLine(old) {
+                if global {
+                    let snap = self.editor.snapshot(selection: NSRange(location: self.editor.index[line].bodyStart, length: 0))
+                    if let edit = snap.deleteLines() { self.editor.apply(edit, keepSelection: true) }
+                } else {
+                    self.saveDocumentSearch(replacing: line, name: name, query: query)
+                }
+            }
+            if global && !item.global { GlobalConfig.shared.updateSearch(old: nil, new: .init(name: name, query: query)) }
+            if !global && item.global { self.saveDocumentSearch(replacing: nil, name: name, query: query) }
             self.applyFilter(query)
             self.reloadSidebar()
         }
     }
 
-    @objc func deleteSidebarSearch(_ sender: Any?) {
-        guard let i = selectedEmbeddedSearch else { NSSound.beep(); return }
-        let snap = editor.snapshot(selection: NSRange(location: editor.index[i].bodyStart, length: 0))
-        if let edit = snap.deleteLines() { editor.apply(edit, keepSelection: true) }
-        closeSearch(nil)
+    private func deleteSearch(_ item: SidebarItem) {
+        guard let query = item.query else { return }
+        if item.global {
+            GlobalConfig.shared.updateSearch(old: query, new: nil)
+        } else if let line = documentSearchLine(query) {
+            let snap = editor.snapshot(selection: NSRange(location: editor.index[line].bodyStart, length: 0))
+            if let edit = snap.deleteLines() { editor.apply(edit, keepSelection: true) }
+        }
+        if editor.filterQuery == query { closeSearch(nil) }
         reloadSidebar()
     }
 
-    private func askSearch(name: String, query: String, completion: @escaping (String, String) -> Void) {
+    private func askSearch(name: String, query: String, global: Bool, completion: @escaping (String, String, Bool) -> Void) {
         guard let window else { return }
         let alert = NSAlert()
         alert.messageText = "사이드바 검색"
-        alert.informativeText = "이름과 질의를 적으세요. 이 문서의 Searches: 프로젝트에 저장됩니다."
+        alert.informativeText = "이름과 질의를 적으세요. 괄호도 그대로 쓰면 됩니다."
         let nameField = NSTextField(string: name)
         nameField.placeholderString = "이름"
         let queryField = NSTextField(string: query)
         queryField.placeholderString = "질의 (예: @due <[d] next week and not @done)"
-        let stack = NSStackView(views: [nameField, queryField])
+        let shared = NSButton(checkboxWithTitle: "모든 문서에 표시 (공유 searches 파일에 저장)", target: nil, action: nil)
+        shared.state = global ? .on : .off
+        let stack = NSStackView(views: [nameField, queryField, shared])
         stack.orientation = .vertical
-        stack.frame = NSRect(x: 0, y: 0, width: 320, height: 56)
-        nameField.widthAnchor.constraint(equalToConstant: 320).isActive = true
-        queryField.widthAnchor.constraint(equalToConstant: 320).isActive = true
+        stack.alignment = .leading
+        stack.frame = NSRect(x: 0, y: 0, width: 340, height: 84)
+        nameField.widthAnchor.constraint(equalToConstant: 340).isActive = true
+        queryField.widthAnchor.constraint(equalToConstant: 340).isActive = true
         alert.accessoryView = stack
         alert.addButton(withTitle: "저장")
         alert.addButton(withTitle: "취소")
@@ -270,7 +389,7 @@ final class DocumentWindowController: NSWindowController, NSToolbarDelegate, NSS
                 a.runModal()
                 return
             }
-            completion(n, q)
+            completion(n, q, shared.state == .on)
         }
     }
 
@@ -287,7 +406,7 @@ final class DocumentWindowController: NSWindowController, NSToolbarDelegate, NSS
     func validateMenuItem(_ item: NSMenuItem) -> Bool {
         switch item.action {
         case #selector(toggleFloating(_:)): item.state = window?.level == .floating ? .on : .off
-        case #selector(editSidebarSearch(_:)), #selector(deleteSidebarSearch(_:)): return selectedEmbeddedSearch != nil
+        case #selector(editSidebarSearch(_:)), #selector(deleteSidebarSearch(_:)): return selectedSearch != nil
         case #selector(closeSearch(_:)), #selector(refreshSearch(_:)): return !editor.filterQuery.isEmpty
         default: break
         }
@@ -383,10 +502,17 @@ final class DocumentWindowController: NSWindowController, NSToolbarDelegate, NSS
     func showTagWith() {
         guard let window else { return }
         let names = freshSections()?.tags.children.map { String($0.title.dropFirst()) } ?? []
-        let list = names.map { name in
-            PaletteChoice(title: "@" + name, symbol: "tag") { [weak self] in self?.editor.perform { $0.toggleTag(name) } }
+        let dateTags = ["due": "마감일", "start": "시작일"]
+        let all = Array(Set(names).union(["due", "start", "today", "done"])).sorted()
+        let list = all.map { name in
+            PaletteChoice(title: "@" + name, symbol: "tag") { [weak self] in
+                guard let self else { return }
+                if let title = dateTags[name] { self.textView.toggleDateTag(name, title: title) }
+                else if name == "done" { self.editor.toggleDone() }
+                else { self.editor.perform { $0.toggleTag(name) } }
+            }
         }
-        ChoicePalette.show(over: window, placeholder: "태그 붙이기 (예: @next @priority(1))", choices: list) { [weak self] input in
+        ChoicePalette.show(over: window, placeholder: "태그 붙이기 (⇧↑↓로 여러 개, 새 태그는 입력 후 ↩)", choices: list, multiple: true) { [weak self] input in
             self?.applyTags(input)
         }
     }
@@ -411,6 +537,67 @@ final class DocumentWindowController: NSWindowController, NSToolbarDelegate, NSS
     func askDate(title: String, completion: @escaping (String?) -> Void) {
         guard let window else { return }
         DatePrompt.ask(over: window, title: title, completion: completion)
+    }
+
+    // MARK: 미리 알림
+
+    @objc func importReminders(_ sender: Any?) { importReminders(move: true) }
+    @objc func importReminderCopies(_ sender: Any?) { importReminders(move: false) }
+    @objc func exportToReminders(_ sender: Any?) { exportReminders(move: true) }
+    @objc func exportCopyToReminders(_ sender: Any?) { exportReminders(move: false) }
+
+    private func remindersDenied() {
+        let a = NSAlert()
+        a.messageText = "미리 알림에 접근할 수 없습니다"
+        a.informativeText = "시스템 설정 > 개인정보 보호 및 보안 > 미리 알림에서 PlainFocusTask를 허용하세요."
+        if let window { a.beginSheetModal(for: window) }
+    }
+
+    /// 미리 알림을 골라 현재 항목 아래에 작업으로 넣는다. `move`면 미리 알림에서 지운다.
+    private func importReminders(move: Bool) {
+        Task { @MainActor in
+            guard await Reminders.requestAccess() else { return remindersDenied() }
+            let items = await Reminders.incomplete()
+            guard let window, !items.isEmpty else { NSSound.beep(); return }
+            var chosen: [Reminders.Item] = []
+            let choices = items.map { item in
+                PaletteChoice(title: item.title, detail: item.list, symbol: "checklist") { chosen.append(item) }
+            }
+            ChoicePalette.show(over: window, placeholder: move ? "가져올 미리 알림 (⇧↑↓로 여러 개)" : "사본으로 가져올 미리 알림", choices: choices, multiple: true, completion: { [weak self] in
+                guard let self, !chosen.isEmpty else { return }
+                self.editor.perform { snap in snap.insertLines { indent in chosen.flatMap { Reminders.lines(for: $0, indent: indent) } } }
+                if move { Reminders.remove(ids: chosen.map(\.id)) }
+            })
+        }
+    }
+
+    /// 선택한 항목을 미리 알림 목록에 만든다. `move`면 문서에서 지운다.
+    private func exportReminders(move: Bool) {
+        let snap = editor.snapshot()
+        let index = editor.index, text = editor.text
+        let tops = index.commonAncestors(snap.visibleSelected.filter { !index[$0].isBlank })
+        guard !tops.isEmpty else { NSSound.beep(); return }
+        let items = tops.map { t in
+            (title: index.displayName(t, text),
+             notes: ((t + 1)..<index[t].branchEnd).map { index.body($0, text) }.joined(separator: "\n"),
+             due: index[t].tag("due")?.value.flatMap { DateParser.parse($0) })
+        }
+        Task { @MainActor in
+            guard await Reminders.requestAccess() else { return remindersDenied() }
+            guard let window else { return }
+            let choices = Reminders.lists.map { list in
+                PaletteChoice(title: list.title, symbol: "list.bullet") { [weak self] in
+                    guard let self else { return }
+                    do {
+                        try Reminders.export(items, toList: list.id)
+                        if move, let edit = self.editor.snapshot().removeBranches(tops) { self.editor.apply(edit) }
+                    } catch {
+                        NSAlert(error: error).beginSheetModal(for: window)
+                    }
+                }
+            }
+            ChoicePalette.show(over: window, placeholder: "내보낼 미리 알림 목록", choices: choices)
+        }
     }
 
     @objc override func newWindowForTab(_ sender: Any?) {

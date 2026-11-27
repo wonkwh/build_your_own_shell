@@ -525,6 +525,26 @@ extension EditorSnapshot {
         return (index[i].branchEnd, index.indentString(i, text))
     }
 
+    /// 여러 줄을 현재 항목 아래(보이는 자식이 있으면 첫 자식 자리)에 넣는다. `texts`는 들여쓰기를 포함한다.
+    func insertLines(_ make: (_ indent: String) -> [String]) -> Edit? {
+        let (at, indent) = insertionPoint(after: cursorLine)
+        let texts = make(indent)
+        guard !texts.isEmpty else { return nil }
+        var result = allLines()
+        result.insert(contentsOf: texts.map { NewLine(text: $0, source: nil) }, at: at)
+        return makeEdit(result, select: (at, LineText.indentLength(texts[0])))
+    }
+
+    /// 가지들을 지운다. 미리 알림으로 내보낸 뒤 쓴다.
+    func removeBranches(_ tops: [Int]) -> Edit? {
+        var removed = Set<Int>()
+        for t in tops { removed.formUnion(t..<index[t].branchEnd) }
+        var result = (0..<n).filter { !removed.contains($0) }.map { NewLine(text: lineText($0), source: $0) }
+        if result.isEmpty { result = [NewLine(text: "", source: nil)] }
+        let k = min(tops.first ?? 0, result.count - 1)
+        return makeEdit(result, select: (k, LineText.indentLength(result[k].text)))
+    }
+
     /// New Task·Note·Project: 현재 항목 아래에 넣고 이름 부분을 선택한다.
     func insertItem(_ body: String, selectFrom: Int, selectTo: Int) -> Edit? {
         let (at, indent) = insertionPoint(after: cursorLine)

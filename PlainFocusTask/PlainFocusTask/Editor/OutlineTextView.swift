@@ -6,6 +6,16 @@ final class OutlineTextView: NSTextView {
     private var dropIndicator: NSRect?
 
     var controller: DocumentWindowController? { window?.windowController as? DocumentWindowController }
+
+    /// 포커스·호이스트한 깊이만큼 글을 왼쪽으로 당긴다.
+    var levelShift: CGFloat = 0 {
+        didSet { if levelShift != oldValue { needsDisplay = true; window?.invalidateCursorRects(for: self) } }
+    }
+
+    override var textContainerOrigin: NSPoint {
+        let o = super.textContainerOrigin
+        return NSPoint(x: o.x - levelShift, y: o.y)
+    }
     private var index: LineIndex { editor.index }
 
     // MARK: - 키
@@ -70,13 +80,14 @@ final class OutlineTextView: NSTextView {
     }
 
     private func drawHandle(_ r: NSRect, line i: Int) {
+        let base = editor.styler.theme.handle ?? editor.styler.textColor
         let parent = index.hasChildren(i)
         if parent, index[i].collapsed || editor.visibility.filterHiddenIDs != nil && hasHiddenChild(i) {
-            NSColor.tertiaryLabelColor.setFill()
+            base.withAlphaComponent(0.3).setFill()
             NSBezierPath(ovalIn: r.insetBy(dx: -r.width * 0.45, dy: -r.height * 0.45)).fill()
-            NSColor.labelColor.setFill()
+            base.setFill()
         } else {
-            (parent ? NSColor.secondaryLabelColor : NSColor.quaternaryLabelColor).setFill()
+            base.withAlphaComponent(parent ? 0.55 : 0.22).setFill()
         }
         NSBezierPath(ovalIn: r).fill()
     }
@@ -107,29 +118,61 @@ final class OutlineTextView: NSTextView {
         return hit.contains(p) ? i : nil
     }
 
+    /// 문자 범위가 그려진 사각형(뷰 좌표).
+    private func rect(forCharacters r: NSRange) -> NSRect {
+        guard let lm = layoutManager, let tc = textContainer else { return .zero }
+        let g = lm.glyphRange(forCharacterRange: r, actualCharacterRange: nil)
+        return lm.boundingRect(forGlyphRange: g, in: tc).offsetBy(dx: textContainerOrigin.x, dy: textContainerOrigin.y)
+    }
+
+    /// 작업 앞 `- ` 영역. 클릭하면 @done 토글.
+    func dashRect(forLine i: Int) -> NSRect? {
+        guard i < index.count, !editor.hidden[i], index[i].type == .task else { return nil }
+        return rect(forCharacters: NSRange(location: index[i].bodyStart, length: 2)).insetBy(dx: -4, dy: -2)
+    }
+
     private func dashLine(at p: NSPoint) -> Int? {
-        guard let lm = layoutManager, let tc = textContainer, let i = visibleLine(at: p), index[i].type == .task else { return nil }
-        let g = lm.glyphRange(forCharacterRange: NSRange(location: index[i].bodyStart, length: 1), actualCharacterRange: nil)
-        let r = lm.boundingRect(forGlyphRange: g, in: tc).offsetBy(dx: textContainerOrigin.x, dy: textContainerOrigin.y)
-        return r.insetBy(dx: -2, dy: -1).contains(p) ? i : nil
+        guard let i = visibleLine(at: p), let r = dashRect(forLine: i) else { return nil }
+        return r.contains(p) ? i : nil
+    }
+
+    /// 점이 실제 글자 위에 있을 때만 그 글자 위치. 줄 끝 빈 곳 클릭은 nil.
+    private func characterUnder(_ p: NSPoint) -> Int? {
+        guard let c = characterIndex(at: p) else { return nil }
+        return rect(forCharacters: NSRange(location: c, length: 1)).insetBy(dx: -1, dy: -1).contains(p) ? c : nil
+    }
+
+    private enum Hit { case link(String), tag(String), tagValue(String, String) }
+
+    private func hit(at p: NSPoint) -> Hit? {
+        guard let c = characterUnder(p), let storage = textStorage else { return nil }
+        if let link = storage.attribute(.outlineLink, at: c, effectiveRange: nil) as? String { return .link(link) }
+        guard let tag = storage.attribute(.outlineTag, at: c, effectiveRange: nil) as? String else { return nil }
+        if let value = storage.attribute(.outlineTagValue, at: c, effectiveRange: nil) as? String { return .tagValue(tag, value) }
+        return .tag(tag)
     }
 
     override func mouseDown(with event: NSEvent) {
         let p = convert(event.locationInWindow, from: nil)
-        if let i = handleLine(at: p) { trackHandle(i); return }
-        if event.modifierFlags.contains(.command), let c = characterIndex(at: p) {
-            if let link = textStorage?.attribute(.outlineLink, at: c, effectiveRange: nil) as? String {
-                open(link)
-                return
-            }
-            if let tag = textStorage?.attribute(.outlineTag, at: c, effectiveRange: nil) as? String {
-                editor.onTagClicked?(tag)
-                return
-            }
-        }
-        if event.clickCount == 1, event.modifierFlags.intersection([.shift, .command, .option]).isEmpty, let i = dashLine(at: p) {
-            editor.toggleDone(line: i)
+        if let i = handleLine(at: p) {
+            // ⌥클릭은 그 항목에 포커스
+            if event.modifierFlags.contains(.option) { editor.focus(line: i) } else { trackHandle(i) }
             return
+        }
+        if event.clickCount == 1, event.modifierFlags.intersection([.shift, .control, .option]).isEmpty {
+            if let i = dashLine(at: p) {
+                editor.toggleDone(line: i)
+                return
+            }
+            switch hit(at: p) {
+            case let .link(link)?: open(link); return
+            case let .tag(name)?: editor.onTagClicked?("@" + name); return
+            case let .tagValue(name, value)?:
+                let quoted = "\"" + value.replacingOccurrences(of: "\"", with: "\\\"") + "\""
+                editor.onTagClicked?(value.contains(",") ? "@\(name) contains[l] \(quoted)" : "@\(name) = \(quoted)")
+                return
+            case nil: break
+            }
         }
         super.mouseDown(with: event)
     }
@@ -147,11 +190,132 @@ final class OutlineTextView: NSTextView {
 
     override func mouseMoved(with event: NSEvent) {
         let p = convert(event.locationInWindow, from: nil)
-        if handleLine(at: p) != nil || dashLine(at: p) != nil {
+        if handleLine(at: p) != nil || dashLine(at: p) != nil || hit(at: p) != nil {
             NSCursor.pointingHand.set()
         } else {
             super.mouseMoved(with: event)
         }
+    }
+
+    // MARK: - 접근성: 손잡이·대시를 버튼으로 노출한다
+
+    private weak var accessibilityHost: NSView?
+    /// 접근성 클라이언트가 나중에 묻기 때문에 만든 요소를 붙잡아 둔다
+    private var accessibilityCache: [ActionElement] = []
+
+    private nonisolated final class ActionElement: NSAccessibilityElement {
+        nonisolated(unsafe) var action: @MainActor () -> Void = {}
+        override func accessibilityPerformPress() -> Bool {
+            let run = action
+            MainActor.assumeIsolated { run() }
+            return true
+        }
+    }
+
+    /// 보이는 줄의 대시·태그·손잡이 버튼. `parent` 좌표로 바꿔 둔다.
+    func outlineAccessibilityElements(in parent: NSView) -> [Any] {
+        var children: [ActionElement] = []
+        defer { accessibilityCache = children }
+        accessibilityHost = parent
+        guard let lm = layoutManager, let tc = textContainer, index.count > 0 else { return children }
+        let origin = textContainerOrigin
+        let glyphs = lm.glyphRange(forBoundingRect: visibleRect.offsetBy(dx: -origin.x, dy: -origin.y), in: tc)
+        let chars = lm.characterRange(forGlyphRange: glyphs, actualGlyphRange: nil)
+        var i = index.line(at: chars.location)
+        while i < index.count, index[i].start <= NSMaxRange(chars) {
+            let name = index.displayName(i, editor.text)
+            let line = i
+            if let r = dashRect(forLine: i) {
+                children.append(element(r, label: "완료 \(name)", identifier: "dash-\(i)") { [weak self] in self?.editor.toggleDone(line: line) })
+            }
+            for tag in index[i].tags {
+                let r = rect(forCharacters: NSRange(location: index[i].start + tag.range.location, length: tag.range.length))
+                children.append(element(r, label: "태그 @\(tag.name)", identifier: "tag-\(i)-\(tag.name)") { [weak self] in self?.editor.onTagClicked?("@" + tag.name) })
+            }
+            if index.hasChildren(i), let r = handleRect(forLine: i) {
+                children.append(element(r.insetBy(dx: -4, dy: -4), label: "접기 \(name)", identifier: "handle-\(i)") { [weak self] in self?.editor.toggleFold([line]) })
+            }
+            i += 1
+        }
+        return children
+    }
+
+    private func element(_ r: NSRect, label: String, identifier: String, action: @escaping @MainActor () -> Void) -> ActionElement {
+        let e = ActionElement()
+        e.setAccessibilityRole(.button)
+        e.setAccessibilityLabel(label)
+        e.setAccessibilityIdentifier(identifier)
+        e.setAccessibilityParent(accessibilityHost)
+        if let window { e.setAccessibilityFrame(window.convertToScreen(convert(r, to: nil))) }
+        e.action = action
+        return e
+    }
+
+    // MARK: - 태그 자동 완성
+
+    private lazy var tagPopup: TagCompletionPopup = {
+        let p = TagCompletionPopup()
+        p.onAccept = { [weak self] name, range in
+            guard let self else { return }
+            self.insertText(name, replacementRange: range)
+        }
+        return p
+    }()
+
+    /// 커서가 `@이름` 안에 있으면 `@` 다음부터 커서까지의 범위.
+    private var tagPrefixRange: NSRange? {
+        let sel = selectedRange()
+        guard sel.length == 0, !hasMarkedText() else { return nil }
+        let s = string as NSString
+        var k = sel.location
+        let nameChars = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._"))
+        while k > 0, let u = UnicodeScalar(s.character(at: k - 1)), nameChars.contains(u) { k -= 1 }
+        guard k > 0, s.character(at: k - 1) == 64 else { return nil }
+        // `@` 앞은 줄 시작이나 공백이어야 태그다
+        if k >= 2, let before = UnicodeScalar(s.character(at: k - 2)), !CharacterSet.whitespacesAndNewlines.contains(before) { return nil }
+        return NSRange(location: k, length: sel.location - k)
+    }
+
+    private func updateTagCompletion() {
+        guard let range = tagPrefixRange, let window else { tagPopup.hide(); return }
+        let prefix = (string as NSString).substring(with: range).lowercased()
+        var names = Set(editor.index.lines.flatMap { $0.tags.map(\.name) })
+        names.formUnion(GlobalConfig.shared.tags.include)
+        names.formUnion(["done", "today", "due", "start"])
+        let matches = names.filter { $0.lowercased().hasPrefix(prefix) && $0.lowercased() != prefix }
+            .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+        guard !matches.isEmpty else { tagPopup.hide(); return }
+        let caret = firstRect(forCharacterRange: NSRange(location: range.location - 1, length: 1), actualRange: nil)
+        tagPopup.show(matches, range: range, below: caret, in: window)
+    }
+
+    override func didChangeText() {
+        super.didChangeText()
+        updateTagCompletion()
+    }
+
+    override func setSelectedRanges(_ ranges: [NSValue], affinity: NSSelectionAffinity, stillSelecting: Bool) {
+        super.setSelectedRanges(ranges, affinity: affinity, stillSelecting: stillSelecting)
+        // 커서가 태그 밖으로 나가면 닫는다
+        if tagPopup.isVisible, tagPrefixRange == nil { tagPopup.hide() }
+    }
+
+    override func doCommand(by selector: Selector) {
+        if tagPopup.isVisible {
+            switch selector {
+            case #selector(moveUp(_:)): tagPopup.move(-1); return
+            case #selector(moveDown(_:)): tagPopup.move(1); return
+            case #selector(insertNewline(_:)), #selector(insertTab(_:)): tagPopup.accept(); return
+            case #selector(cancelOperation(_:)): tagPopup.hide(); return
+            default: tagPopup.hide()
+            }
+        }
+        super.doCommand(by: selector)
+    }
+
+    override func resignFirstResponder() -> Bool {
+        tagPopup.hide()
+        return super.resignFirstResponder()
     }
 
     // MARK: - 끌어놓기
@@ -240,7 +404,7 @@ final class OutlineTextView: NSTextView {
         editor.perform { $0.archiveDone(addProjectTag: Preferences.archiveAddsProject, removeExtraTags: Preferences.archiveRemovesTags) }
     }
 
-    private func toggleDateTag(_ name: String, title: String) {
+    func toggleDateTag(_ name: String, title: String) {
         if editor.snapshot().hasTag(name) {
             editor.perform { $0.setTag(name, value: nil, remove: true) }
             return
@@ -312,5 +476,14 @@ final class OutlineTextView: NSTextView {
         default: break
         }
         return super.validateMenuItem(item)
+    }
+}
+
+/// 편집기 스크롤 뷰. 텍스트 뷰의 대시·태그·손잡이를 접근성 버튼으로 노출한다.
+final class OutlineScrollView: NSScrollView {
+    override func accessibilityChildren() -> [Any]? {
+        let base = super.accessibilityChildren() ?? []
+        guard let tv = documentView as? OutlineTextView else { return base }
+        return base + tv.outlineAccessibilityElements(in: self)
     }
 }

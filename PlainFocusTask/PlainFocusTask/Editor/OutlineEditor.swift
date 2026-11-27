@@ -50,6 +50,10 @@ final class OutlineEditor: NSObject {
     }
 
     func restyleAll() {
+        let dark = editorView?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        styler.theme = StyleSheets.current(dark: dark)
+        editorView?.backgroundColor = styler.theme.background ?? .textBackgroundColor
+        editorView?.insertionPointColor = styler.tintColor
         storage.beginEditing()
         styler.style(storage, index, lines: 0...max(index.count - 1, 0))
         storage.endEditing()
@@ -255,6 +259,7 @@ final class OutlineEditor: NSObject {
 
     private func stateChanged() {
         recomputeHidden(invalidate: true)
+        editorView?.levelShift = CGFloat(minLevel) * styler.indentWidth
         if let tv = editorView {
             let i = cursorLine
             if hidden[i], let first = (0..<index.count).first(where: { !hidden[$0] }) {
@@ -270,6 +275,20 @@ final class OutlineEditor: NSObject {
         visibility.focusedID = line.map { index[$0].id }
         visibility.hoistedID = nil
         stateChanged()
+    }
+
+    /// 항목 자신은 숨기고 자손만 보인다.
+    func hoist(line: Int) {
+        visibility.hoistedID = index[line].id
+        visibility.focusedID = nil
+        stateChanged()
+    }
+
+    /// 포커스·호이스트한 항목까지의 경로. 창 부제목에 쓴다.
+    var focusPath: String {
+        guard let i = focusedLine ?? hoistedLine else { return "" }
+        let names = (index.ancestors(i).reversed() + [i]).map { index.displayName($0, text) }
+        return "홈 ▸ " + names.joined(separator: " ▸ ")
     }
 
     func focusIn() {
@@ -403,6 +422,7 @@ final class OutlineEditor: NSObject {
         visibility.focusedID = state.focused.flatMap { $0 < index.count ? index[$0].id : nil }
         visibility.hoistedID = state.hoisted.flatMap { $0 < index.count ? index[$0].id : nil }
         recomputeHidden(invalidate: true)
+        editorView?.levelShift = CGFloat(minLevel) * styler.indentWidth
         onStateChange?()
     }
 }
@@ -410,12 +430,15 @@ final class OutlineEditor: NSObject {
 // MARK: - 텍스트 저장소: 바뀐 줄만 다시 파싱·서식
 
 extension OutlineEditor: @preconcurrency NSTextStorageDelegate {
-    /// 글꼴 대체(fixAttributes) 전에 서식을 입혀야 한글 글꼴이 바르게 대체된다.
-    func textStorage(_ textStorage: NSTextStorage, willProcessEditing editedMask: NSTextStorageEditActions, range editedRange: NSRange, changeInLength delta: Int) {
+    /// 편집이 끝난 뒤 줄 서식을 입힌다. willProcessEditing에서 하면 편집 범위가 줄 끝까지 넓어져 커서가 다음 줄로 튄다.
+    /// 그 대신 글꼴 대체(fixAttributes)를 직접 불러 한글 글꼴을 맞춘다.
+    func textStorage(_ textStorage: NSTextStorage, didProcessEditing editedMask: NSTextStorageEditActions, range editedRange: NSRange, changeInLength delta: Int) {
         guard editedMask.contains(.editedCharacters) else { return }
         index.update(textStorage.mutableString, editedRange: editedRange, delta: delta)
         let a = index.line(at: editedRange.location), b = index.line(at: NSMaxRange(editedRange))
         styler.style(textStorage, index, lines: a...b)
+        let styled = NSRange(location: index[a].start, length: index[b].fullEnd - index[a].start)
+        textStorage.fixAttributes(in: styled)
         // 편집 중에는 레이아웃을 건드리지 않고, 바뀐 숨김은 다음 순간 반영한다
         let changed = recomputeHidden(invalidate: false)
         if !changed.isEmpty {
@@ -475,3 +498,4 @@ extension OutlineEditor: NSTextViewDelegate {
         return newSelectedCharRanges.map { NSValue(range: adjustSelection($0.rangeValue, from: old)) }
     }
 }
+

@@ -19,19 +19,26 @@ final class ChoicePalette: NSObject, NSTextFieldDelegate, NSTableViewDataSource,
     private let choices: [PaletteChoice]
     private var shown: [PaletteChoice] = []
     private let custom: ((String) -> Void)?
+    private let completion: (() -> Void)?
     private weak var parent: NSWindow?
 
-    /// - Parameter custom: 맞는 선택지가 없을 때 입력한 문자열로 실행한다.
-    static func show(over window: NSWindow, placeholder: String, choices: [PaletteChoice], custom: ((String) -> Void)? = nil) {
+    /// - Parameters:
+    ///   - multiple: ⇧↑↓·⌘클릭으로 여러 개를 골라 차례로 실행한다
+    ///   - custom: 맞는 선택지가 없을 때 입력한 문자열로 실행한다
+    ///   - completion: 고른 선택지를 모두 실행한 뒤 호출
+    static func show(over window: NSWindow, placeholder: String, choices: [PaletteChoice], multiple: Bool = false,
+                     custom: ((String) -> Void)? = nil, completion: (() -> Void)? = nil) {
         current?.close()
-        let palette = ChoicePalette(window: window, placeholder: placeholder, choices: choices, custom: custom)
+        let palette = ChoicePalette(window: window, placeholder: placeholder, choices: choices, custom: custom, completion: completion)
+        palette.table.allowsMultipleSelection = multiple
         current = palette
         palette.present()
     }
 
-    private init(window: NSWindow, placeholder: String, choices: [PaletteChoice], custom: ((String) -> Void)?) {
+    private init(window: NSWindow, placeholder: String, choices: [PaletteChoice], custom: ((String) -> Void)?, completion: (() -> Void)?) {
         self.choices = choices
         self.custom = custom
+        self.completion = completion
         self.parent = window
         panel = KeyPanel(contentRect: NSRect(x: 0, y: 0, width: 460, height: 320), styleMask: [.titled, .fullSizeContentView], backing: .buffered, defer: false)
         super.init()
@@ -123,15 +130,15 @@ final class ChoicePalette: NSObject, NSTextFieldDelegate, NSTableViewDataSource,
 
     @objc private func choose() {
         let text = field.stringValue.trimmingCharacters(in: .whitespaces)
-        let row = table.selectedRow
-        let action: (() -> Void)?
-        if row >= 0, row < shown.count { action = shown[row].perform }
-        else if let custom, !text.isEmpty { action = { custom(text) } }
-        else { action = nil }
+        let rows = table.selectedRowIndexes.filter { $0 < shown.count }
+        var actions = rows.map { shown[$0].perform }
+        if actions.isEmpty, let custom, !text.isEmpty { actions = [{ custom(text) }] }
         let parent = self.parent
+        let completion = self.completion
         close()
         parent?.makeKeyAndOrderFront(nil)
-        action?()
+        actions.forEach { $0() }
+        completion?()
     }
 
     // MARK: 입력
@@ -142,6 +149,8 @@ final class ChoicePalette: NSObject, NSTextFieldDelegate, NSTableViewDataSource,
         switch selector {
         case #selector(NSResponder.moveUp(_:)): move(-1)
         case #selector(NSResponder.moveDown(_:)): move(1)
+        case #selector(NSResponder.moveUpAndModifySelection(_:)): move(-1, extend: true)
+        case #selector(NSResponder.moveDownAndModifySelection(_:)): move(1, extend: true)
         case #selector(NSResponder.insertNewline(_:)): choose()
         case #selector(NSResponder.cancelOperation(_:)): close(); parent?.makeKeyAndOrderFront(nil)
         default: return false
@@ -149,10 +158,11 @@ final class ChoicePalette: NSObject, NSTextFieldDelegate, NSTableViewDataSource,
         return true
     }
 
-    private func move(_ d: Int) {
+    private func move(_ d: Int, extend: Bool = false) {
         guard !shown.isEmpty else { return }
-        let row = min(max(table.selectedRow + d, 0), shown.count - 1)
-        table.selectRowIndexes([row], byExtendingSelection: false)
+        let current = d < 0 ? (table.selectedRowIndexes.first ?? 0) : (table.selectedRowIndexes.last ?? -1)
+        let row = min(max(current + d, 0), shown.count - 1)
+        table.selectRowIndexes([row], byExtendingSelection: extend && table.allowsMultipleSelection)
         table.scrollRowToVisible(row)
     }
 

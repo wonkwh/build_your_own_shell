@@ -46,6 +46,25 @@ final class GlobalConfig {
         }
     }
 
+    /// 공유 searches 파일의 검색을 추가·바꾸기·지우기. `old`가 없으면 추가, `new`가 없으면 지운다.
+    func updateSearch(old: String?, new: Search?) {
+        var lines = read(searchesURL).components(separatedBy: "\n")
+        let line = new.map { "\t\($0.name) @search(\(LineIndex.escapeTagValue($0.query)))" }
+        if let old, let k = lines.firstIndex(where: { LineText.tags($0).first { $0.name == "search" }?.value == old }) {
+            if let line { lines[k] = line } else { lines.remove(at: k) }
+        } else if let line {
+            if let k = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces).lowercased() == "searches:" }) {
+                var end = k + 1
+                while end < lines.count, lines[end].hasPrefix("\t") || lines[end].hasPrefix(" ") { end += 1 }
+                lines.insert(line, at: end)
+            } else {
+                lines += ["Searches:", line]
+            }
+        }
+        try? lines.joined(separator: "\n").write(to: searchesURL, atomically: true, encoding: .utf8)
+        cache[searchesURL] = nil
+    }
+
     var tags: Tags {
         var result = Tags()
         for line in read(tagsURL).components(separatedBy: .newlines) {

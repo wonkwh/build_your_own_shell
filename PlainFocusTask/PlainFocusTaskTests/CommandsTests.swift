@@ -171,6 +171,22 @@ private func run(_ doc: String, hidden: Set<Int> = [], _ f: (EditorSnapshot) -> 
         #expect(idx.lines.map(\.id) == before)
     }
 
+    /// 필터 중 새로 넣은 줄이 숨은 줄의 id를 물려받아 숨겨지면 안 된다.
+    @Test func newLinesStayVisibleWhileFiltering() {
+        let text = NSMutableString(string: "Inbox:\n\t- a @today\n\t\tnote\n\t- b\nWork:")
+        let idx = LineIndex(text)
+        let ids = Visibility.filterHiddenIDs(idx, matches: ItemPath("@today").evaluate(idx, text))
+        let visibility = Visibility(filterHiddenIDs: ids)
+        let snap = EditorSnapshot(text: text, index: idx, hidden: visibility.hidden(idx), selection: NSRange(location: idx[1].end, length: 0))
+        let e = snap.insertItem("New", selectFrom: 0, selectTo: 3)!
+        text.replaceCharacters(in: e.range, with: e.text)
+        idx.update(text, editedRange: NSRange(location: e.range.location, length: (e.text as NSString).length), delta: (e.text as NSString).length - e.range.length)
+        idx.carry(startingAt: e.firstLine, from: e.carry)
+        let newLine = idx.line(at: e.selection.location)
+        #expect(idx.body(newLine, text) == "New")
+        #expect(visibility.hidden(idx)[newLine] == false)
+    }
+
     @Test func editCarriesCollapsedState() {
         let text = NSMutableString(string: "A\nB\n\tb\nC")
         let idx = LineIndex(text)

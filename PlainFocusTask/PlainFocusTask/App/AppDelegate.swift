@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillFinishLaunching(_ notification: Notification) {
         NSApp.mainMenu = MainMenu.build()
         GlobalConfig.shared.ensureFiles()
+        StyleSheets.ensureFolder()
         showsWelcome = !UserDefaults.standard.bool(forKey: "welcomeShown")
     }
 
@@ -27,6 +28,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// 첫 실행에는 안내 문서만 연다.
     func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool { !showsWelcome }
+
+    @objc func selectStyleSheet(_ sender: NSMenuItem) {
+        UserDefaults.standard.set(sender.title, forKey: "styleSheet")
+    }
+
+    @objc func openStyleSheetFolder(_ sender: Any?) {
+        StyleSheets.ensureFolder()
+        NSWorkspace.shared.open(StyleSheets.folder)
+    }
+
+    @objc func openUsersGuide(_ sender: Any?) {
+        NSWorkspace.shared.open(URL(string: "https://www.taskpaper.com/guide/")!)
+    }
 
     @objc func showPreferences(_ sender: Any?) {
         if settingsWindow == nil {

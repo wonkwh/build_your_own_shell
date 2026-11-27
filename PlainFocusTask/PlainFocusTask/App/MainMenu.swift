@@ -22,6 +22,7 @@ enum MainMenu {
     }
 
     private static var sep: NSMenuItem { .separator() }
+    private static let styleSheetDelegate = StyleSheetMenuDelegate()
 
     static func build() -> NSMenu {
         let main = NSMenu()
@@ -55,6 +56,8 @@ enum MainMenu {
             item("저장…", "saveDocument:", "s"),
             item("다른 이름으로 저장…", "saveDocumentAs:", "S"),
             item("마지막으로 저장한 버전으로 되돌리기", "revertDocumentToSaved:"), sep,
+            item("미리 알림 가져오기…", "importReminders:"),
+            item("미리 알림 사본 가져오기…", "importReminderCopies:"), sep,
             item("페이지 설정…", "runPageLayout:"),
             item("프린트…", "printDocument:"),
         ]))
@@ -98,6 +101,7 @@ enum MainMenu {
                 item("스마트 복사하기/붙이기", "toggleSmartInsertDelete:"),
                 item("스마트 인용", "toggleAutomaticQuoteSubstitution:"),
                 item("스마트 대시", "toggleAutomaticDashSubstitution:"),
+                item("스마트 링크", "toggleAutomaticLinkDetection:"),
                 item("데이터 감지기", "toggleAutomaticDataDetection:"),
                 item("텍스트 대치", "toggleAutomaticTextReplacement:"),
             ]),
@@ -113,9 +117,9 @@ enum MainMenu {
         ]))
 
         main.addItem(menu("항목", [
-            item("새 작업", "newTask:"),
-            item("새 메모", "newNote:"),
-            item("새 프로젝트", "newProject:"), sep,
+            item("새 작업", "newTask:", "\r"),
+            item("새 메모", "newNote:", "\r", [.command, .option]),
+            item("새 프로젝트", "newProject:", "\r", [.command, .shift]), sep,
             item("묶기", "groupLines:", "g", [.command, .option]),
             item("복제", "duplicateLines:", "D"),
             menu("서식", [
@@ -132,6 +136,8 @@ enum MainMenu {
             item("아래로", "moveLineDown:", down, [.command, .control]),
             item("가지 아래로", "moveBranchesDown:", down, [.command, .control, .option]), sep,
             item("프로젝트로 옮기기…", "moveToProject:", "\\"), sep,
+            item("미리 알림으로 내보내기…", "exportToReminders:"),
+            item("미리 알림으로 사본 내보내기…", "exportCopyToReminders:"), sep,
             item("항목 삭제", "deleteLines:", "K", .control),
         ]))
 
@@ -181,7 +187,11 @@ enum MainMenu {
             item("명령…", "showCommandsPalette:", "P"),
         ]))
 
+        let styleSheet = NSMenuItem(title: "스타일시트", action: nil, keyEquivalent: "")
+        styleSheet.submenu = NSMenu(title: "스타일시트")
+        styleSheet.submenu?.delegate = styleSheetDelegate
         let window = menu("윈도우", [
+            styleSheet, sep,
             item("전체 화면 시작", "toggleFullScreen:", "f", [.command, .control]),
             item("항상 위에 띄우기", "toggleFloating:"),
             item("최소화", "performMiniaturize:", "m"),
@@ -193,6 +203,7 @@ enum MainMenu {
 
         let help = menu("도움말", [
             item("PlainFocusTask 안내 문서", "openWelcome:", "?"),
+            item("TaskPaper 사용 설명서 (웹)", "openUsersGuide:"),
         ])
         NSApp.helpMenu = help.submenu
         main.addItem(help)

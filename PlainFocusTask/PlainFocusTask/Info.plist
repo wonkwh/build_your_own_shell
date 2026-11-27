@@ -55,6 +55,10 @@
 	<string>public.app-category.productivity</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>미리 알림을 개요로 가져오거나 개요 항목을 미리 알림으로 내보냅니다.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>미리 알림을 개요로 가져오거나 개요 항목을 미리 알림으로 내보냅니다.</string>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
 		<dict>

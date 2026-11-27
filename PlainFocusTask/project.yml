@@ -21,6 +21,7 @@ targets:
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.files.user-selected.read-write: true
+        com.apple.security.personal-information.calendars: true
     info:
       path: PlainFocusTask/Info.plist
       properties:
@@ -29,6 +30,8 @@ targets:
         CFBundleVersion: "1"
         LSApplicationCategoryType: public.app-category.productivity
         NSPrincipalClass: NSApplication
+        NSRemindersFullAccessUsageDescription: 미리 알림을 개요로 가져오거나 개요 항목을 미리 알림으로 내보냅니다.
+        NSRemindersUsageDescription: 미리 알림을 개요로 가져오거나 개요 항목을 미리 알림으로 내보냅니다.
         CFBundleDocumentTypes:
           - CFBundleTypeName: TaskPaper Document
             CFBundleTypeRole: Editor

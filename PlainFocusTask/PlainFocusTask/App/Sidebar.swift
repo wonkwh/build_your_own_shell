@@ -12,6 +12,8 @@ final class SidebarItem: NSObject {
     let query: String?
     /// 프로젝트면 줄 id
     let lineID: Int?
+    /// 공유 searches 파일에 저장된 검색인지
+    var global = false
     var children: [SidebarItem] = []
 
     init(_ kind: Kind, _ title: String, key: String, query: String? = nil, lineID: Int? = nil) {
@@ -60,7 +62,9 @@ enum SidebarModel {
             searches.children.append(SidebarItem(.search, index.displayName(i, text), key: "s-\(q)", query: q))
         }
         for s in GlobalConfig.shared.searches {
-            searches.children.append(SidebarItem(.search, s.name, key: "s-\(s.query)", query: s.query))
+            let item = SidebarItem(.search, s.name, key: "s-\(s.query)", query: s.query)
+            item.global = true
+            searches.children.append(item)
         }
 
         let tags = SidebarItem(.group, "태그", key: "g-tags")
@@ -85,10 +89,20 @@ enum SidebarModel {
 }
 
 /// 사이드바 목록 보기.
-final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate {
+final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate, NSMenuDelegate {
+    static let projectType = NSPasteboard.PasteboardType("com.wonkwh.PlainFocusTask.project")
+
     let outlineView = NSOutlineView()
     private(set) var roots: [SidebarItem] = []
     var onSelect: ((SidebarItem) -> Void)?
+    var onDoubleClick: ((SidebarItem) -> Void)?
+    /// 우클릭한 항목(nil이면 빈 곳)에 맞는 메뉴 항목
+    var menuItems: ((SidebarItem?) -> [NSMenuItem])?
+    /// 프로젝트 줄 id를 `parent`(nil이면 최상위)의 `index`번째 자식 자리로 옮긴다. -1이면 parent의 첫 자식
+    var onMoveProject: ((_ lineID: Int, _ parent: SidebarItem?, _ index: Int) -> Bool)?
+    /// 편집기에서 끌어온 선택 항목을 프로젝트로 옮긴다
+    var onDropSelection: ((SidebarItem) -> Bool)?
+    weak var editorView: NSView?
     private var suppress = false
     private var collapsedKeys = Set<String>()
 
@@ -105,6 +119,12 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         outlineView.dataSource = self
         outlineView.delegate = self
         outlineView.autosaveExpandedItems = false
+        outlineView.target = self
+        outlineView.doubleAction = #selector(doubleClicked)
+        outlineView.menu = NSMenu()
+        outlineView.menu?.delegate = self
+        outlineView.registerForDraggedTypes([Self.projectType, .string])
+        outlineView.setDraggingSourceOperationMask(.move, forLocal: true)
         scroll.documentView = outlineView
         view = scroll
     }
@@ -203,6 +223,53 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
             ])
         }
         return cell
+    }
+
+    @objc private func doubleClicked() {
+        guard let item = outlineView.item(atRow: outlineView.clickedRow) as? SidebarItem else { return }
+        onDoubleClick?(item)
+    }
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let item = outlineView.clickedRow >= 0 ? outlineView.item(atRow: outlineView.clickedRow) as? SidebarItem : nil
+        menuItems?(item).forEach(menu.addItem)
+    }
+
+    // MARK: 끌어놓기
+
+    func outlineView(_ outlineView: NSOutlineView, pasteboardWriterForItem item: Any) -> NSPasteboardWriting? {
+        guard let item = item as? SidebarItem, item.kind == .project, let id = item.lineID else { return nil }
+        let pb = NSPasteboardItem()
+        pb.setString(String(id), forType: Self.projectType)
+        return pb
+    }
+
+    /// 프로젝트 그룹 안의 항목인지
+    private func inProjects(_ item: SidebarItem?) -> Bool {
+        guard let item else { return false }
+        return item.kind == .project || item.key == "g-projects"
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, validateDrop info: NSDraggingInfo, proposedItem item: Any?, proposedChildIndex index: Int) -> NSDragOperation {
+        let target = item as? SidebarItem
+        if info.draggingPasteboard.string(forType: Self.projectType) != nil {
+            return inProjects(target) ? .move : []
+        }
+        if let source = info.draggingSource as? NSView, source === editorView, target?.kind == .project || target?.kind == .home {
+            outlineView.setDropItem(target, dropChildIndex: NSOutlineViewDropOnItemIndex)
+            return .move
+        }
+        return []
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, acceptDrop info: NSDraggingInfo, item: Any?, childIndex index: Int) -> Bool {
+        let target = item as? SidebarItem
+        if let raw = info.draggingPasteboard.string(forType: Self.projectType), let id = Int(raw) {
+            return onMoveProject?(id, target?.kind == .project ? target : nil, index) ?? false
+        }
+        if let target { return onDropSelection?(target) ?? false }
+        return false
     }
 
     func outlineViewSelectionDidChange(_ notification: Notification) {
