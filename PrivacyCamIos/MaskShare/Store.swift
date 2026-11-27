@@ -4,7 +4,7 @@ import SwiftUI
 /// 한 번 결제로 여는 Pro. 영수증은 StoreKit 2 가 기기 안에서 검증한다.
 @MainActor @Observable
 final class Store {
-    static let proID = "com.wonkwh.privacycam.pro"
+    static let proID = "com.wonkwh.maskshare.pro"
     private(set) var isPro = false
 
     /// 현재 권한을 읽은 뒤 구매·환불·가족 공유 변경을 계속 반영한다.

@@ -152,7 +152,7 @@ struct BeforeAfterComparison: View {
 
 /// 쇼케이스 원본(`showcase_N_1`)이나 샘플 PDF 를 골라 바로 검사해 볼 수 있는 시트.
 struct SamplePicker: View {
-    static let pdfName = "PrivacyCam_Sample.pdf"
+    static let pdfName = "MaskShare_Sample.pdf"
     let onPick: (String) -> Void
 
     var body: some View {

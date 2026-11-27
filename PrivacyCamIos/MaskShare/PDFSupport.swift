@@ -73,7 +73,7 @@ enum PDFSupport {
     static func export(_ jobs: [(PhotoSource, [RedactionItem])], name: String, to dir: URL) throws -> URL {
         let out = dir.appendingPathComponent("\(name)_safe.pdf")
         try? FileManager.default.removeItem(at: out)
-        guard let ctx = CGContext(out as CFURL, mediaBox: nil, [kCGPDFContextCreator: "PrivacyCam"] as CFDictionary)
+        guard let ctx = CGContext(out as CFURL, mediaBox: nil, [kCGPDFContextCreator: "MaskShare"] as CFDictionary)
         else { throw ImageError.renderFailed }
         do {
             for (source, items) in jobs {

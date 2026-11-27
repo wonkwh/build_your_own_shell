@@ -1,6 +1,6 @@
-# PrivacyCam iOS
+# MaskShare iOS
 
-Flutter PrivacyCam 의 사진 기능을 SwiftUI 로 옮긴 iOS 전용 앱. 모든 검출은 기기 안에서 돈다.
+Flutter 앱 PrivacyCam 의 사진 기능을 SwiftUI 로 옮긴 iOS 전용 앱. 모든 검출은 기기 안에서 돈다.
 
 | 대상 | 원본 (Flutter) | iOS |
 |---|---|---|
@@ -10,18 +10,23 @@ Flutter PrivacyCam 의 사진 기능을 SwiftUI 로 옮긴 iOS 전용 앱. 모�
 | QR·바코드 | ML Kit | `VNDetectBarcodesRequest` + 읽히지 않는 QR 은 finder 패턴 검출(`QRFinder`) |
 | 번호판 | YOLOv9-t ONNX (NMS 포함) | Core ML FP16, NMS 는 Swift |
 
+## 스토어 표기
+
+- 이름: MaskShare
+- 부제: 공유 전에 얼굴·번호판·개인정보 가리기 (en: Redact photos & PDFs on device)
+
 ## 실행
 
 ```sh
 xcodegen generate
-open PrivacyCam.xcodeproj
+open MaskShare.xcodeproj
 ```
 
 ## 번호판 모델
 
-`PrivacyCam/Models/LicensePlateDetector.mlpackage` 는 open-image-models 의
+`MaskShare/Models/LicensePlateDetector.mlpackage` 는 open-image-models 의
 `yolo-v9-t-384-license-plate-end2end` 를 `/model/model.22/Concat_5` 에서 잘라 NMS 를 뺀 뒤 변환했다.
-다시 만들려면 `tools/convert_plate_model.py`. 라이선스는 `PrivacyCam/Models/OPEN_IMAGE_MODELS_MIT_LICENSE.txt`.
+다시 만들려면 `tools/convert_plate_model.py`. 라이선스는 `MaskShare/Models/OPEN_IMAGE_MODELS_MIT_LICENSE.txt`.
 
 ## 샘플 사진
 
@@ -40,10 +45,10 @@ open PrivacyCam.xcodeproj
 
 ## 인앱 결제
 
-무료는 사진 한 장씩과 2쪽까지의 PDF, Pro(비소모성 `com.wonkwh.privacycam.pro`, $4.99) 는 사진 최대 10장과 PDF 50쪽까지 처리한다.
-App Store Connect 에 같은 ID 로 상품을 만들어야 실기기에서 보인다. 로컬 테스트는 `PrivacyCam.storekit` (Xcode Run, `StoreTests`).
+무료는 사진 한 장씩과 2쪽까지의 PDF, Pro(비소모성 `com.wonkwh.maskshare.pro`, $1.99) 는 사진 최대 10장과 PDF 50쪽까지 처리한다.
+App Store Connect 에 같은 ID 로 상품을 만들어야 실기기에서 보인다. 로컬 테스트는 `MaskShare.storekit` (Xcode Run, `StoreTests`).
 
-`PrivacyCam/Samples/PrivacyCam_Sample.pdf` 는 가상의 이름·연락처·카드(테스트 번호)로 만든 2쪽 문서이고, 2쪽 사진은 위 4번이다. 다시 만들려면 `tools/make_sample_pdf.swift`.
+`MaskShare/Samples/MaskShare_Sample.pdf` 는 가상의 이름·연락처·카드(테스트 번호)로 만든 2쪽 문서이고, 2쪽 사진은 위 4번이다. 다시 만들려면 `tools/make_sample_pdf.swift`.
 
 ## 시뮬레이터 제약
 

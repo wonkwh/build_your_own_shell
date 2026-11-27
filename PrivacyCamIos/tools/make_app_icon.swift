@@ -1,5 +1,5 @@
 // 앱 아이콘(1024, 알파 없음) 생성: 뷰파인더 안 인물 흉상, 오른쪽 절반 모자이크, 가운데 비교 핸들.
-// swift tools/make_app_icon.swift PrivacyCam/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+// swift tools/make_app_icon.swift MaskShare/Assets.xcassets/AppIcon.appiconset/AppIcon.png
 import CoreGraphics
 import Foundation
 import ImageIO

@@ -1,4 +1,4 @@
-name: PrivacyCam
+name: MaskShare
 options:
   bundleIdPrefix: com.wonkwh
   deploymentTarget:
@@ -9,39 +9,39 @@ settings:
     DEVELOPMENT_TEAM: AEVQL949E2
     CODE_SIGN_STYLE: Automatic
 targets:
-  PrivacyCam:
+  MaskShare:
     type: application
     platform: iOS
-    sources: [PrivacyCam]
+    sources: [MaskShare]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.wonkwh.privacycam
+        PRODUCT_BUNDLE_IDENTIFIER: com.wonkwh.maskshare
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: PrivacyCam
+        INFOPLIST_KEY_CFBundleDisplayName: MaskShare
         INFOPLIST_KEY_NSCameraUsageDescription: 가릴 사진을 촬영합니다. 사진은 기기 밖으로 나가지 않습니다.
         INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: 개인정보를 가린 사본을 사진 앱에 저장합니다.
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         COREML_CODEGEN_LANGUAGE: None
-  PrivacyCamTests:
+  MaskShareTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - PrivacyCamTests
-      - path: PrivacyCam.storekit
+      - MaskShareTests
+      - path: MaskShare.storekit
         buildPhase: resources
     dependencies:
-      - target: PrivacyCam
+      - target: MaskShare
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
 schemes:
-  PrivacyCam:
+  MaskShare:
     build:
       targets:
-        PrivacyCam: all
-        PrivacyCamTests: [test]
+        MaskShare: all
+        MaskShareTests: [test]
     run:
-      storeKitConfiguration: PrivacyCam.storekit
+      storeKitConfiguration: MaskShare.storekit
     test:
-      targets: [PrivacyCamTests]
+      targets: [MaskShareTests]

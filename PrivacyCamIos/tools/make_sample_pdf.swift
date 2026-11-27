@@ -1,9 +1,9 @@
 import AppKit
 import CoreImage
-// 샘플 PDF 생성: swift tools/make_sample_pdf.swift PrivacyCam/Samples/PrivacyCam_Sample.pdf <showcase_4_1 에서 세 사람만 잘라낸 jpg>
+// 샘플 PDF 생성: swift tools/make_sample_pdf.swift MaskShare/Samples/MaskShare_Sample.pdf <showcase_4_1 에서 세 사람만 잘라낸 jpg>
 let a = CommandLine.arguments
 var media = CGRect(x: 0, y: 0, width: 595, height: 842)
-let ctx = CGContext(URL(fileURLWithPath: a[1]) as CFURL, mediaBox: &media, [kCGPDFContextCreator: "PrivacyCam"] as CFDictionary)!
+let ctx = CGContext(URL(fileURLWithPath: a[1]) as CFURL, mediaBox: &media, [kCGPDFContextCreator: "MaskShare"] as CFDictionary)!
 let accent = NSColor(red: 0x5B/255, green: 0x67/255, blue: 0xD8/255, alpha: 1)
 let ink = NSColor(white: 0.1, alpha: 1), gray = NSColor(white: 0.45, alpha: 1), line = NSColor(white: 0.85, alpha: 1)
 

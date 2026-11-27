@@ -3,18 +3,18 @@
   "nonRenewingSubscriptions": [],
   "products": [
     {
-      "displayPrice": "4.99",
+      "displayPrice": "1.99",
       "familyShareable": true,
       "internalID": "6A3F1C20",
       "localizations": [
         {
           "description": "여러 장을 한 번에 검사하고 저장합니다.",
-          "displayName": "PrivacyCam Pro",
+          "displayName": "MaskShare Pro",
           "locale": "ko_KR"
         }
       ],
-      "productID": "com.wonkwh.privacycam.pro",
-      "referenceName": "PrivacyCam Pro",
+      "productID": "com.wonkwh.maskshare.pro",
+      "referenceName": "MaskShare Pro",
       "type": "NonConsumable"
     }
   ],

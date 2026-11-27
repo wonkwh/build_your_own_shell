@@ -6,7 +6,7 @@ import PDFKit
 import StoreKitTest
 import UIKit
 import Testing
-@testable import PrivacyCam
+@testable import MaskShare
 
 struct ClassifierTests {
     @Test(arguments: [
@@ -80,7 +80,7 @@ struct PlateDecodeTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         let box = RedactionItem(.manual, CGRect(x: 4, y: 4, width: 10, height: 10))
         let urls = try Renderer.exportAll([(.data(tagged as Data), [box]), (.image(image), [])], to: dir)
-        #expect(urls.map(\.lastPathComponent) == ["PrivacyCam_safe_1.jpg", "PrivacyCam_safe_2.jpg"])
+        #expect(urls.map(\.lastPathComponent) == ["MaskShare_1.jpg", "MaskShare_2.jpg"])
         for url in urls { #expect(!Renderer.hasIdentifyingMetadata(try Data(contentsOf: url))) }
     }
 }
@@ -108,7 +108,7 @@ struct QRFinderTests {
 @MainActor
 struct StoreTests {
     @Test func proUnlocksAfterPurchase() async throws {
-        let session = try SKTestSession(configurationFileNamed: "PrivacyCam")
+        let session = try SKTestSession(configurationFileNamed: "MaskShare")
         session.disableDialogs = true
         session.clearTransactions()
         let store = Store()

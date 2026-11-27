@@ -2,7 +2,7 @@ import PhotosUI
 import SwiftUI
 
 @main
-struct PrivacyCamApp: App {
+struct MaskShareApp: App {
     @State private var store = Store()
 
     var body: some Scene {
@@ -68,7 +68,7 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 8) {
                     Image("Logo").resizable().frame(width: 26, height: 26).clipShape(.rect(cornerRadius: 7))
-                    Text("PrivacyCam").font(.callout.weight(.bold))
+                    Text("MaskShare").font(.callout.weight(.bold))
                 }
                 .accessibilityElement(children: .combine)
                 Text("공유하기 전에,\n기기 안에서 가립니다")

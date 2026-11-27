@@ -96,7 +96,7 @@ enum Renderer {
             try autoreleasepool {
                 let (image, png) = try job.0.load()
                 let data = try encode(render(image, items: job.1), png: png)
-                let name = jobs.count == 1 ? "PrivacyCam_safe" : "PrivacyCam_safe_\(i + 1)"
+                let name = jobs.count == 1 ? "MaskShare" : "MaskShare_\(i + 1)"
                 let url = dir.appendingPathComponent("\(name).\(png ? "png" : "jpg")")
                 try data.write(to: url, options: [.atomic, .completeFileProtection])
                 return url

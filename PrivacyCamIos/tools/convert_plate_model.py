@@ -1,6 +1,6 @@
 # 번호판 ONNX(end2end, NMS 포함) → NMS 를 뺀 Core ML(.mlpackage, FP16) 변환 + ONNX 대비 검증.
 # uv venv --python 3.12 && uv pip install onnx onnx2torch "torch==2.7.0" "torchvision==0.22.0" coremltools numpy pillow onnxruntime
-# python tools/convert_plate_model.py <license_plate_yolov9_t_384.onnx> PrivacyCam/Models/LicensePlateDetector.mlpackage <sample.jpg>
+# python tools/convert_plate_model.py <license_plate_yolov9_t_384.onnx> MaskShare/Models/LicensePlateDetector.mlpackage <sample.jpg>
 import sys, numpy as np, onnx, onnx.utils, torch, coremltools as ct, onnxruntime as ort
 from onnx2torch import convert
 src, out = sys.argv[1], sys.argv[2]
