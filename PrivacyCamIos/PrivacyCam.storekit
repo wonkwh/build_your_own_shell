@@ -1,0 +1,31 @@
+{
+  "identifier": "5D1C2B7E",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "4.99",
+      "familyShareable": true,
+      "internalID": "6A3F1C20",
+      "localizations": [
+        {
+          "description": "여러 장을 한 번에 검사하고 저장합니다.",
+          "displayName": "PrivacyCam Pro",
+          "locale": "ko_KR"
+        }
+      ],
+      "productID": "com.wonkwh.privacycam.pro",
+      "referenceName": "PrivacyCam Pro",
+      "type": "NonConsumable"
+    }
+  ],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_locale": "ko_KR",
+    "_storefront": "USA"
+  },
+  "subscriptionGroups": [],
+  "version": {
+    "major": 4,
+    "minor": 0
+  }
+}

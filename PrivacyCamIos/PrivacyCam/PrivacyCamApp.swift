@@ -3,8 +3,15 @@ import SwiftUI
 
 @main
 struct PrivacyCamApp: App {
+    @State private var store = Store()
+
     var body: some Scene {
-        WindowGroup { HomeView().tint(Theme.accent) }
+        WindowGroup {
+            HomeView()
+                .tint(Theme.accent)
+                .environment(store)
+                .task { await store.observe() }
+        }
     }
 }
 
@@ -48,7 +55,9 @@ struct HomeView: View {
     @State private var sample: String?
     @State private var batch: Batch?
     @State private var error: String?
+    @State private var showPaywall = false
     @Environment(\.colorScheme) private var scheme
+    @Environment(Store.self) private var store
 
     var body: some View {
         ScrollView {
@@ -113,6 +122,7 @@ struct HomeView: View {
             SamplePicker { sample = $0; showSamples = false }
         }
         .fullScreenCover(item: $batch) { EditorView(batch: $0) }
+        .sheet(isPresented: $showPaywall) { ProPaywall() }
         .alert("열 수 없음", isPresented: .constant(error != nil)) {
             Button("확인") { error = nil }
         } message: { Text(error ?? "") }
@@ -121,11 +131,12 @@ struct HomeView: View {
     private var actions: some View {
         VStack(spacing: 10) {
             // ponytail: 원본 Data 를 메모리에 다 들고 있으므로 10장 상한. 더 필요하면 파일 URL 로 받는다.
-            PhotosPicker(selection: $pickerItems, maxSelectionCount: 10, selectionBehavior: .ordered, matching: .images) {
+            // 무료는 한 장씩, Pro 는 여러 장
+            PhotosPicker(selection: $pickerItems, maxSelectionCount: store.isPro ? 10 : 1, selectionBehavior: .ordered, matching: .images) {
                 HStack(spacing: 8) {
                     Image(systemName: "photo.on.rectangle")
                     Text("사진 선택")
-                    Text("최대 10장").font(.subheadline).opacity(0.6)
+                    if store.isPro { Text("최대 10장").font(.subheadline).opacity(0.6) }
                 }
             }
             .buttonStyle(.pill)
@@ -136,6 +147,10 @@ struct HomeView: View {
                 Button("샘플로 해보기") { showSamples = true }
             }
             .buttonStyle(.pill(.secondary))
+            if !store.isPro {
+                Button("여러 장을 한 번에 처리하려면 Pro") { showPaywall = true }
+                    .font(.footnote.weight(.semibold))
+            }
             Label("사진은 기기 밖으로 나가지 않습니다", systemImage: "lock.fill")
                 .font(.caption)
                 .foregroundStyle(.secondary)

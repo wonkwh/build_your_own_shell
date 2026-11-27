@@ -34,6 +34,11 @@ open PrivacyCam.xcodeproj
 | 3 | 개인정보 텍스트 (가운데 열만 잘라 씀) | [Digital Business Card Example.png](https://commons.wikimedia.org/wiki/File:Digital_Business_Card_Example.png) | DoubleCritch | CC0 |
 | 4 | 얼굴 | [Three friends by train tracks (Unsplash).jpg](https://commons.wikimedia.org/wiki/File:Three_friends_by_train_tracks_(Unsplash).jpg) | Priscilla Du Preez artographybyp | CC0 |
 
+## 인앱 결제
+
+무료는 한 장씩, Pro(비소모성 `com.wonkwh.privacycam.pro`, $4.99) 는 최대 10장을 한 번에 처리한다.
+App Store Connect 에 같은 ID 로 상품을 만들어야 실기기에서 보인다. 로컬 테스트는 `PrivacyCam.storekit` (Xcode Run, `StoreTests`).
+
 ## 시뮬레이터 제약
 
 - Core ML·Vision 신경망 요청은 시뮬레이터에서 CPU 로 강제한다 (GPU 경로가 0 을 내거나 실패).

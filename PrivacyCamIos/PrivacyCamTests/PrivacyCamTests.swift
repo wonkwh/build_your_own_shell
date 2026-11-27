@@ -2,6 +2,7 @@ import CoreGraphics
 import CoreImage
 import Foundation
 import ImageIO
+import StoreKitTest
 import Testing
 @testable import PrivacyCam
 
@@ -99,5 +100,34 @@ struct QRFinderTests {
 
         let blank = try #require(CIContext().createCGImage(CIImage(color: .white).cropped(to: canvas.extent), from: canvas.extent))
         #expect(QRFinder.detect(blank).isEmpty)
+    }
+}
+
+@MainActor
+struct StoreTests {
+    @Test func proUnlocksAfterPurchase() async throws {
+        let session = try SKTestSession(configurationFileNamed: "PrivacyCam")
+        session.disableDialogs = true
+        session.clearTransactions()
+        let store = Store()
+        await store.refresh()
+        #expect(!store.isPro)
+
+        let product = try #require(try await Product.products(for: [Store.proID]).first)
+        #expect(product.type == .nonConsumable)
+        guard case .success(.verified(let transaction)) = try await product.purchase() else {
+            Issue.record("구매 실패"); return
+        }
+        await transaction.finish()
+        await store.refresh()
+        #expect(store.isPro)
+
+        // 환불은 비동기로 반영되므로 잠시 기다린다
+        try session.refundTransaction(identifier: UInt(transaction.id))
+        for _ in 0..<20 where store.isPro {
+            try await Task.sleep(for: .milliseconds(100))
+            await store.refresh()
+        }
+        #expect(!store.isPro)
     }
 }

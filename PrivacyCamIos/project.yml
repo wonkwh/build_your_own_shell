@@ -26,7 +26,10 @@ targets:
   PrivacyCamTests:
     type: bundle.unit-test
     platform: iOS
-    sources: [PrivacyCamTests]
+    sources:
+      - PrivacyCamTests
+      - path: PrivacyCam.storekit
+        buildPhase: resources
     dependencies:
       - target: PrivacyCam
     settings:
@@ -38,5 +41,7 @@ schemes:
       targets:
         PrivacyCam: all
         PrivacyCamTests: [test]
+    run:
+      storeKitConfiguration: PrivacyCam.storekit
     test:
       targets: [PrivacyCamTests]
