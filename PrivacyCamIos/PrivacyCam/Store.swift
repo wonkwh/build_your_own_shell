@@ -38,6 +38,7 @@ struct ProPaywall: View {
                     .font(.title.weight(.heavy))
                 VStack(alignment: .leading, spacing: 12) {
                     Label("최대 10장을 고르면 차례로 검사하고 한꺼번에 저장", systemImage: "square.stack")
+                    Label("3쪽 이상 PDF 도 \(PDFSupport.maxPages)쪽까지 가리기", systemImage: "doc.text")
                     Label("한 번 결제로 계속 사용, 가족 공유 가능", systemImage: "infinity")
                     Label("한 장씩 가리기와 메타데이터 제거는 계속 무료", systemImage: "checkmark.shield")
                 }

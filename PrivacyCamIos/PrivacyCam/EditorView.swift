@@ -26,6 +26,7 @@ struct EditorView: View {
             .task(id: current) { await loadImage() }
             .task(id: showPreview ? session.items : nil) { if showPreview { await renderPreview() } }
             .sheet(item: $exported) { ExportSheet(exported: $0) }
+            .onDisappear { if let pdf = batch.pdf { try? FileManager.default.removeItem(at: pdf.url) } }
             .alert("오류", isPresented: .constant(error != nil)) {
                 Button("확인") { error = nil }
             } message: { Text(error ?? "") }
@@ -215,12 +216,18 @@ struct EditorView: View {
         preview = try? await Task.detached { try Renderer.render(image, items: items) }.value
     }
 
-    /// 열지 못한 사진은 빼고 모두 내보낸다.
+    /// 열지 못한 사진은 빼고 모두 내보낸다. PDF 는 쪽을 빼지 않고 한 파일로.
     private func export() async {
-        let jobs = batch.pages.filter { !$0.failed }.map { ($0.source, $0.items) }
+        let pdfName = batch.pdf?.name
+        let jobs = batch.pages.filter { pdfName != nil || !$0.failed }.map { ($0.source, $0.items) }
         do {
             let (urls, thumb) = try await Task.detached {
-                let urls = try Renderer.exportAll(jobs, to: FileManager.default.temporaryDirectory)
+                let dir = FileManager.default.temporaryDirectory
+                if let pdfName {
+                    let url = try PDFSupport.export(jobs, name: pdfName, to: dir)
+                    return ([url], PDFSupport.thumbnail(url))
+                }
+                let urls = try Renderer.exportAll(jobs, to: dir)
                 return (urls, urls.first.flatMap(Renderer.thumbnail))
             }.value
             exported = Exported(urls: urls, preview: thumb)
@@ -241,6 +248,8 @@ struct ExportSheet: View {
     @State private var saved = false
     @State private var error: String?
 
+    private var isPDF: Bool { exported.urls.first?.pathExtension == "pdf" }
+
     var body: some View {
         VStack(spacing: 16) {
             if let preview = exported.preview {
@@ -252,17 +261,24 @@ struct ExportSheet: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-            Label("위치·기기 정보 등 메타데이터를 제거했습니다", systemImage: "checkmark.shield")
+            Label(isPDF ? "텍스트·메타데이터 없이 이미지로 다시 만들었습니다" : "위치·기기 정보 등 메타데이터를 제거했습니다",
+                  systemImage: "checkmark.shield")
                 .font(.footnote)
                 .foregroundStyle(Theme.positive)
             if let error { Text(error).font(.footnote).foregroundStyle(Theme.caution) }
-            Button(saved ? "저장됨" : exported.urls.count > 1 ? "사진에 \(exported.urls.count)장 저장" : "사진에 저장", systemImage: saved ? "checkmark" : "square.and.arrow.down") {
-                Task { await save() }
+            if isPDF {
+                // 파일 앱 저장은 공유 시트에 있다
+                ShareLink(items: exported.urls) { Label("공유 또는 파일에 저장", systemImage: "square.and.arrow.up") }
+                    .buttonStyle(.pill)
+            } else {
+                Button(saved ? "저장됨" : exported.urls.count > 1 ? "사진에 \(exported.urls.count)장 저장" : "사진에 저장", systemImage: saved ? "checkmark" : "square.and.arrow.down") {
+                    Task { await save() }
+                }
+                .buttonStyle(.pill)
+                .disabled(saved)
+                ShareLink(items: exported.urls) { Label("공유", systemImage: "square.and.arrow.up") }
+                    .buttonStyle(.pill(.secondary))
             }
-            .buttonStyle(.pill)
-            .disabled(saved)
-            ShareLink(items: exported.urls) { Label("공유", systemImage: "square.and.arrow.up") }
-                .buttonStyle(.pill(.secondary))
         }
         .padding(16)
         .presentationDetents([.medium, .large])

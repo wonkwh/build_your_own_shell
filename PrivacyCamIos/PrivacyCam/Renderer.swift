@@ -16,14 +16,15 @@ enum ImageError: LocalizedError {
     }
 }
 
-/// 원본 데이터나 샘플 이미지. 데이터는 쓸 때마다 디코드해 여러 장을 메모리에 쌓지 않는다.
+/// 원본 데이터, 샘플 이미지, PDF 한 쪽. 쓸 때마다 디코드해 여러 장을 메모리에 쌓지 않는다.
 enum PhotoSource: Sendable {
-    case data(Data), image(CGImage)
+    case data(Data), image(CGImage), pdfPage(URL, Int)
 
     func load() throws -> (image: CGImage, isPNG: Bool) {
         switch self {
         case .data(let data): try Renderer.load(data)
         case .image(let image): (image, false)
+        case .pdfPage(let url, let index): (try PDFSupport.render(url, page: index), false)
         }
     }
 }

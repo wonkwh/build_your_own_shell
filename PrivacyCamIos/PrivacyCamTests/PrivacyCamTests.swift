@@ -2,7 +2,9 @@ import CoreGraphics
 import CoreImage
 import Foundation
 import ImageIO
+import PDFKit
 import StoreKitTest
+import UIKit
 import Testing
 @testable import PrivacyCam
 
@@ -129,5 +131,36 @@ struct StoreTests {
             await store.refresh()
         }
         #expect(!store.isPro)
+    }
+}
+
+struct PDFTests {
+    /// 텍스트가 든 2쪽 PDF 를 가려 내보내면 쪽 크기는 그대로, 텍스트 층은 사라져야 한다.
+    @Test func exportFlattensText() throws {
+        let page = CGRect(x: 0, y: 0, width: 595, height: 842)
+        let data = UIGraphicsPDFRenderer(bounds: page).pdfData { ctx in
+            for n in 1...2 {
+                ctx.beginPage()
+                ("Page \(n) kim@example.com" as NSString).draw(at: CGPoint(x: 72, y: 72), withAttributes: [.font: UIFont.systemFont(ofSize: 24)])
+            }
+        }
+        let picked = FileManager.default.temporaryDirectory.appendingPathComponent("Report.pdf")
+        try data.write(to: picked)
+        #expect(PDFDocument(url: picked)?.string?.contains("kim@example.com") == true)
+
+        let (url, count) = try PDFSupport.importFile(picked)
+        defer { [picked, url].forEach { try? FileManager.default.removeItem(at: $0) } }
+        #expect(count == 2)
+        let image = try PDFSupport.render(url, page: 0)
+        #expect(abs(Double(image.width) / Double(image.height) - 595.0 / 842.0) < 0.01)
+
+        let box = RedactionItem(.manual, CGRect(x: 0, y: 0, width: image.width, height: image.height / 5))
+        let jobs: [(PhotoSource, [RedactionItem])] = [(.pdfPage(url, 0), [box]), (.pdfPage(url, 1), [])]
+        let out = try PDFSupport.export(jobs, name: "Report", to: FileManager.default.temporaryDirectory)
+        defer { try? FileManager.default.removeItem(at: out) }
+        let doc = try #require(PDFDocument(url: out))
+        #expect(doc.pageCount == 2)
+        #expect((doc.string ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        #expect(doc.page(at: 0)?.bounds(for: .cropBox).size == page.size)
     }
 }

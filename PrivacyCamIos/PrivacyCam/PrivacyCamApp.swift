@@ -40,10 +40,13 @@ struct Batch: Identifiable {
     let id = UUID()
     let pages: [EditSession]
     var skipped = 0
+    /// PDF 로 들어온 경우 임시 복사본과 원래 파일 이름. 내보내기도 PDF 한 개로.
+    var pdf: (url: URL, name: String)?
 
-    @MainActor init(_ sources: [PhotoSource], skipped: Int = 0) {
+    @MainActor init(_ sources: [PhotoSource], skipped: Int = 0, pdf: (url: URL, name: String)? = nil) {
         pages = sources.map { EditSession($0) }
         self.skipped = skipped
+        self.pdf = pdf
     }
 }
 
@@ -56,6 +59,7 @@ struct HomeView: View {
     @State private var batch: Batch?
     @State private var error: String?
     @State private var showPaywall = false
+    @State private var showPDFPicker = false
     @Environment(\.colorScheme) private var scheme
     @Environment(Store.self) private var store
 
@@ -123,9 +127,27 @@ struct HomeView: View {
         }
         .fullScreenCover(item: $batch) { EditorView(batch: $0) }
         .sheet(isPresented: $showPaywall) { ProPaywall() }
+        .fileImporter(isPresented: $showPDFPicker, allowedContentTypes: [.pdf]) { openPDF($0) }
         .alert("열 수 없음", isPresented: .constant(error != nil)) {
             Button("확인") { error = nil }
         } message: { Text(error ?? "") }
+    }
+
+    /// 무료는 `PDFSupport.freePageLimit` 쪽까지. 넘으면 결제 화면을 띄운다.
+    private func openPDF(_ result: Result<URL, Error>) {
+        do {
+            let picked = try result.get()
+            let (url, count) = try PDFSupport.importFile(picked)
+            let limit = store.isPro ? PDFSupport.maxPages : PDFSupport.freePageLimit
+            guard count <= limit else {
+                try? FileManager.default.removeItem(at: url)
+                if store.isPro { error = PDFError.tooManyPages.localizedDescription } else { showPaywall = true }
+                return
+            }
+            batch = Batch((0..<count).map { .pdfPage(url, $0) }, pdf: (url, picked.deletingPathExtension().lastPathComponent))
+        } catch {
+            self.error = error.localizedDescription
+        }
     }
 
     private var actions: some View {
@@ -144,11 +166,12 @@ struct HomeView: View {
                 if UIImagePickerController.isSourceTypeAvailable(.camera) {
                     Button("촬영", systemImage: "camera") { showCamera = true }
                 }
-                Button("샘플로 해보기") { showSamples = true }
+                Button("PDF", systemImage: "doc.text") { showPDFPicker = true }
+                Button("샘플") { showSamples = true }
             }
             .buttonStyle(.pill(.secondary))
             if !store.isPro {
-                Button("여러 장을 한 번에 처리하려면 Pro") { showPaywall = true }
+                Button("여러 장 사진과 3쪽 이상 PDF 는 Pro") { showPaywall = true }
                     .font(.footnote.weight(.semibold))
             }
             Label("사진은 기기 밖으로 나가지 않습니다", systemImage: "lock.fill")
